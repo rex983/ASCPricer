@@ -8,8 +8,11 @@ const isDev =
   process.env.NODE_ENV === "development" ||
   process.env.AUTH_DEV_BYPASS === "true";
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
-  providers: [
+// Only include Google provider if credentials are configured
+const providers = [];
+
+if (process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET) {
+  providers.push(
     Google({
       clientId: process.env.AUTH_GOOGLE_ID,
       clientSecret: process.env.AUTH_GOOGLE_SECRET,
@@ -19,35 +22,43 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           prompt: "select_account",
         },
       },
-    }),
-    Credentials({
-      id: "credentials",
-      name: "Email & Password",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials) {
-        const email = credentials?.email as string;
-        const password = credentials?.password as string;
-        if (!email || !password) return null;
+    })
+  );
+}
 
-        if (
-          email === "rex@bigbuildingsdirect.com" &&
-          password === process.env.ADMIN_PASSWORD
-        ) {
-          return { id: "admin-001", email, name: "Rex", image: null };
-        }
+providers.push(
+  Credentials({
+    id: "credentials",
+    name: "Email & Password",
+    credentials: {
+      email: { label: "Email", type: "email" },
+      password: { label: "Password", type: "password" },
+    },
+    async authorize(credentials) {
+      const email = credentials?.email as string;
+      const password = credentials?.password as string;
+      if (!email || !password) return null;
 
-        if (isDev) {
-          return {
-            id: "dev-user-001",
-            email,
-            name: email.split("@")[0],
-            image: null,
-          };
-        }
+      // Admin hardcoded login
+      if (
+        email === "rex@bigbuildingsdirect.com" &&
+        password === process.env.ADMIN_PASSWORD
+      ) {
+        return { id: "admin-001", email, name: "Rex", image: null };
+      }
 
+      // Dev bypass
+      if (isDev) {
+        return {
+          id: "dev-user-001",
+          email,
+          name: email.split("@")[0],
+          image: null,
+        };
+      }
+
+      // DB lookup
+      try {
         const supabase = createAdminClient();
         const { data: profile } = await supabase
           .from("profiles")
@@ -63,9 +74,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           name: profile.name || null,
           image: null,
         };
-      },
-    }),
-  ],
+      } catch {
+        return null;
+      }
+    },
+  })
+);
+
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  trustHost: true,
+  providers,
   pages: {
     signIn: "/login",
     error: "/login",
@@ -79,42 +97,34 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return true;
       }
 
-      if (user.email === "rex@bigbuildingsdirect.com") return true;
-      if (isDev) return true;
-
-      try {
-        const supabase = createAdminClient();
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("email", user.email)
-          .single();
-        if (!profile) return false;
-      } catch {
-        return false;
-      }
-
+      // Credentials — already validated in authorize()
       return true;
     },
     async jwt({ token, user }) {
       if (user?.email) {
+        // Admin or dev user
         if (user.email === "rex@bigbuildingsdirect.com" || isDev) {
-          token.role = (token.role as UserRole) || "admin";
-          token.profileId =
-            (token.profileId as string) || user.id || "admin-001";
+          token.role = "admin" as UserRole;
+          token.profileId = user.id || "admin-001";
           return token;
         }
 
-        const supabase = createAdminClient();
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id, role")
-          .eq("email", user.email)
-          .single();
+        // DB user
+        try {
+          const supabase = createAdminClient();
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("id, role")
+            .eq("email", user.email)
+            .single();
 
-        if (profile) {
-          token.role = profile.role as UserRole;
-          token.profileId = profile.id;
+          if (profile) {
+            token.role = profile.role as UserRole;
+            token.profileId = profile.id;
+          }
+        } catch {
+          // fallback
+          token.role = "sales_rep" as UserRole;
         }
       }
       return token;
