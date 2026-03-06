@@ -16,10 +16,11 @@ export function middleware(req: NextRequest) {
     req.cookies.get("authjs.session-token")?.value;
 
   if (!token) {
-    const loginUrl = new URL("/login", req.url);
     const callback = pathname === "/" ? "/calculator" : pathname;
-    loginUrl.searchParams.set("callbackUrl", callback);
-    return NextResponse.redirect(loginUrl);
+    // Auto-redirect to Google OAuth instead of showing login page
+    const signInUrl = new URL("/api/auth/signin/google", req.url);
+    signInUrl.searchParams.set("callbackUrl", callback);
+    return NextResponse.redirect(signInUrl);
   }
 
   return NextResponse.next();
