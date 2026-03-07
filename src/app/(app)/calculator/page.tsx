@@ -175,6 +175,7 @@ export default function CalculatorPage() {
               spreadsheetType={spreadsheetType}
               matrices={matrices}
               regionId={selectedRegion}
+              regionStates={regions.find((r) => r.id === selectedRegion)?.states || []}
             />
           )}
         </div>

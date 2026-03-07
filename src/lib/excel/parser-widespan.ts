@@ -74,6 +74,7 @@ export function parseWidespanWorkbook(workbook: WorkBook): WidespanMatrices {
         trussSpacingByLength: {},
         verticalCountByWidth: {},
         verticalSpacingByWidth: {},
+        verticalSpacingByWind: {},
         purlinRequiredSpacing: {},
         originalPurlinByWidth: {},
         girtSpacingByWind: {},
@@ -149,6 +150,13 @@ export function parseWidespanWorkbook(workbook: WorkBook): WidespanMatrices {
       girtCounts,
       trussPriceByState: snowCalc.trussPriceByWidthGroup,
       diagonalBracePrice: snowCalc.diagonalBracePrice,
+      verticalCountByWidth: snowLoad.verticalCountByWidth,
+      verticalSpacingByWind: snowLoad.verticalSpacingByWind,
+      purlinCostPerFt: snowCalc.purlinCostPerFt,
+      verticalCostPerFt: snowCalc.verticalCostPerFt,
+      girtCostPerFt: snowCalc.girtCostPerFt,
+      legTrussCostPerFt: snowCalc.legTrussCostPerFt,
+      windLoadMapping2: snowLoad.girtSpacingByWind, // girt wind uses second mapping
     },
     changers,
   };

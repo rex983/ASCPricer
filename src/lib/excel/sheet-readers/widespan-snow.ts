@@ -27,6 +27,7 @@ export function readWidespanSnowLoad(ws: WorkSheet): {
   trussSpacingByLength: PricingLookup;
   verticalCountByWidth: PricingLookup;
   verticalSpacingByWidth: PricingLookup;
+  verticalSpacingByWind: PricingLookup;
   purlinRequiredSpacing: PricingLookup;
   originalPurlinByWidth: PricingLookup;
   girtSpacingByWind: PricingLookup;
@@ -56,6 +57,7 @@ export function readWidespanSnowLoad(ws: WorkSheet): {
   const trussSpacingByLength: PricingLookup = {};
   const verticalCountByWidth: PricingLookup = {};
   const verticalSpacingByWidth: PricingLookup = {};
+  const verticalSpacingByWind: PricingLookup = {};
   const purlinRequiredSpacing: PricingLookup = {};
   const originalPurlinByWidth: PricingLookup = {};
   const girtSpacingByWind: PricingLookup = {};
@@ -149,6 +151,26 @@ export function readWidespanSnowLoad(ws: WorkSheet): {
     }
   }
 
+  // Scan for vertical spacing by wind (90→96", 110→96", 120→80", 130→72")
+  // Typically below the verticals-by-width section
+  if (Object.keys(verticalSpacingByWind).length === 0) {
+    for (let r = 0; r < Math.min(30, data.length); r++) {
+      const row = data[r];
+      if (!row) continue;
+      for (let c = 18; c < row.length - 1; c++) {
+        const wind = num(row[c]);
+        const spacing = num(row[c + 1]);
+        if ([90, 110, 120, 130].includes(wind) && spacing >= 40 && spacing <= 120) {
+          // Verify this isn't girt spacing by checking context
+          // Vertical spacings tend to be larger (72-96) vs girt (24-60)
+          if (spacing >= 60 || Object.keys(verticalSpacingByWind).length > 0) {
+            verticalSpacingByWind[String(wind)] = spacing;
+          }
+        }
+      }
+    }
+  }
+
   // Fallback: if column-header-based scanning didn't work,
   // scan all cells for the known patterns
   if (Object.keys(purlinRequiredSpacing).length === 0) {
@@ -199,6 +221,7 @@ export function readWidespanSnowLoad(ws: WorkSheet): {
     trussSpacingByLength,
     verticalCountByWidth,
     verticalSpacingByWidth,
+    verticalSpacingByWind,
     purlinRequiredSpacing,
     originalPurlinByWidth,
     girtSpacingByWind,

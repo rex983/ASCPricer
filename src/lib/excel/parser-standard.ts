@@ -17,7 +17,7 @@ import {
   readTrussSpacing,
   readTrussCounts,
   readHatChannels,
-  readGirtSpacing,
+  readGirtSpacing as readGirtsSheet,
   readVerticals,
   readDiagonalBracing,
   readSnowChangers,
@@ -83,7 +83,9 @@ export function parseStandardWorkbook(workbook: WorkBook): StandardMatrices {
     : {};
   const { spacing: hatChannelSpacing, originalCounts: hatChannelCounts } =
     hatChannelsSheet ? readHatChannels(hatChannelsSheet) : { spacing: {}, originalCounts: {} };
-  const girtSpacing = girtsSheet ? readGirtSpacing(girtsSheet) : {};
+  const { spacing: girtSpacing, girtCountsByHeight } = girtsSheet
+    ? readGirtsSheet(girtsSheet)
+    : { spacing: {}, girtCountsByHeight: {} };
   const {
     spacing: verticalSpacing,
     originalCounts: verticalCountsRaw,
@@ -106,7 +108,14 @@ export function parseStandardWorkbook(workbook: WorkBook): StandardMatrices {
 
   const snowChangers = snowChangersSheet
     ? readSnowChangers(snowChangersSheet)
-    : { windLoadMapping: {}, snowLoadMapping: {} };
+    : {
+        windLoadBuckets: {},
+        snowLoadOptions: {},
+        heightClassification: {},
+        trussPriceByWidthState: {},
+        channelPriceByState: {},
+        tubingPriceByState: {},
+      };
 
   return {
     type: "standard",
@@ -131,20 +140,21 @@ export function parseStandardWorkbook(workbook: WorkBook): StandardMatrices {
     anchors,
     laborEquipment,
     plans,
-    plansSnowSurcharge: snowChangers.snowLoadMapping,
+    plansSnowSurcharge: snowChangers.snowLoadOptions,
     snow: {
       trussSpacing,
       trussCounts,
       hatChannelSpacing,
       hatChannelCounts,
       girtSpacing,
-      girtCounts: {},
+      girtCountsByHeight,
       verticalSpacing,
       verticalCounts,
-      trussPriceByState: {},
-      channelPricePerFt: 2,
-      tubingPricePerFt: 3,
-      pieTrussPrice: 15,
+      trussPriceByWidthState: snowChangers.trussPriceByWidthState,
+      channelPriceByState: snowChangers.channelPriceByState,
+      tubingPriceByState: snowChangers.tubingPriceByState,
+      windLoadBuckets: snowChangers.windLoadBuckets,
+      heightClassification: snowChangers.heightClassification,
       diagonalBracePrice,
       diagonalBraceTallSurcharge,
       windThresholdByState,

@@ -18,12 +18,15 @@ import {
   STANDARD_MAX_HEIGHT,
   WIDESPAN_MIN_HEIGHT,
   WIDESPAN_MAX_HEIGHT,
+  STANDARD_SNOW_LOAD_OPTIONS,
+  WIDESPAN_SNOW_LOAD_OPTIONS,
 } from "@/lib/pricing/constants";
 
 interface CalculatorFormProps {
   spreadsheetType: SpreadsheetType;
   matrices: PricingMatrices | null;
   regionId: string;
+  regionStates?: string[];
 }
 
 const STANDARD_ROOF_OPTIONS = [
@@ -118,7 +121,7 @@ function getAccessoryOptions(matrices: PricingMatrices | null) {
   return { doors, windows, rollUps };
 }
 
-export function CalculatorForm({ spreadsheetType, matrices, regionId }: CalculatorFormProps) {
+export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStates = [] }: CalculatorFormProps) {
   const isWidespan = spreadsheetType === "widespan";
   const router = useRouter();
   const [config, setConfig] = useState<BuildingConfig>(() => getDefaultConfig(spreadsheetType));
@@ -614,7 +617,45 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId }: Calculat
             <CardTitle className="text-base">Engineering & Tax</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <div className="space-y-2">
+                <Label>Snow Load</Label>
+                <Select
+                  value={config.snowLoad || "__none__"}
+                  onValueChange={(v) => update("snowLoad", v === "__none__" ? undefined : v)}
+                >
+                  <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {(isWidespan ? WIDESPAN_SNOW_LOAD_OPTIONS : STANDARD_SNOW_LOAD_OPTIONS).map(
+                      (opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      )
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {!isWidespan && regionStates.length > 0 && (
+                <div className="space-y-2">
+                  <Label>State</Label>
+                  <Select
+                    value={config.state || "__none__"}
+                    onValueChange={(v) => update("state", v === "__none__" ? undefined : v)}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Select state" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      {regionStates.map((st) => (
+                        <SelectItem key={st} value={st}>{st}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label>Wind Rating (MPH)</Label>
                 <Input

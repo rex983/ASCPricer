@@ -81,6 +81,42 @@ export const WIND_LOAD_CATEGORIES = [
   105, 115, 130, 140, 155, 165, 180,
 ] as const;
 
+// Widespan wind categories — mapping #1 for trusses/purlins
+export const WIDESPAN_WIND_CATEGORIES_MAIN = [105, 120, 130] as const;
+
+// Widespan wind categories — mapping #2 for girts only
+export const WIDESPAN_WIND_CATEGORIES_GIRT = [90, 110, 120, 130] as const;
+
+// Standard snow load options
+export const STANDARD_SNOW_LOAD_OPTIONS = [
+  { value: "20LL", label: "20 Roof Load" },
+  { value: "27LL", label: "27LL" },
+  { value: "34LL", label: "34LL" },
+  { value: "41LL", label: "41LL" },
+  { value: "47LL", label: "47LL" },
+  { value: "54LL", label: "54LL" },
+  { value: "61LL", label: "61LL" },
+  { value: "30GL", label: "30 Ground Load" },
+  { value: "40GL", label: "40 Ground Load" },
+  { value: "50GL", label: "50 Ground Load" },
+  { value: "60GL", label: "60 Ground Load" },
+  { value: "70GL", label: "70 Ground Load" },
+  { value: "80GL", label: "80 Ground Load" },
+  { value: "90GL", label: "90 Ground Load" },
+] as const;
+
+// Widespan snow load options
+export const WIDESPAN_SNOW_LOAD_OPTIONS = [
+  { value: "20LL", label: "20 Roof Load" },
+  { value: "27LL", label: "27 Roof Load" },
+  { value: "34LL", label: "34 Roof Load" },
+  { value: "50LL", label: "50 Roof Load" },
+  { value: "30GL", label: "30 Ground Load" },
+  { value: "40GL", label: "40 Ground Load" },
+  { value: "50GL", label: "50 Ground Load" },
+  { value: "75GL", label: "75 Ground Load" },
+] as const;
+
 // Widespan diagonal bracing
 export const WIDESPAN_BRACE_COUNT_SHORT = 4; // length ≤ 50
 export const WIDESPAN_BRACE_COUNT_LONG = 6; // length > 50

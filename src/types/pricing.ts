@@ -126,18 +126,19 @@ export interface StandardMatrices {
   plans: PricingMatrix; // [width][length] → price
   plansSnowSurcharge: PricingLookup; // snow load → surcharge
   snow: {
-    trussSpacing: PricingMatrix; // [config][snowLoad] → spacing
-    trussCounts: PricingMatrix; // [config][snowLoad] → count
-    hatChannelSpacing: PricingMatrix;
-    hatChannelCounts: PricingMatrix;
-    girtSpacing: PricingMatrix;
-    girtCounts: PricingMatrix;
-    verticalSpacing: PricingMatrix;
-    verticalCounts: PricingMatrix;
-    trussPriceByState: PricingLookup; // state → price
-    channelPricePerFt: number;
-    tubingPricePerFt: number;
-    pieTrussPrice: number;
+    trussSpacing: PricingMatrix; // [snowCode][configKey] → spacing
+    trussCounts: PricingMatrix; // ["{width}-{state}"]["{length}"] → count
+    hatChannelSpacing: PricingMatrix; // ["{bucketedTrussSpacing}-{snowCode}"][windSpeed] → spacing
+    hatChannelCounts: PricingMatrix; // [stateWidth][count key] → count
+    girtSpacing: PricingMatrix; // ["{bucketedTrussSpacing}"]["{windSpeed}"] → spacing
+    girtCountsByHeight: PricingLookup; // height → original girt count
+    verticalSpacing: PricingMatrix; // [windSpeed][height] → spacing
+    verticalCounts: PricingMatrix; // [width]["count"] → count
+    trussPriceByWidthState: PricingMatrix; // ["{width}-{state}"] → price (row=width-state, col=price bucket)
+    channelPriceByState: PricingLookup; // state → $/ft ($2 or $2.50)
+    tubingPriceByState: PricingLookup; // state → $/ft ($3-$4)
+    windLoadBuckets: PricingLookup; // input MPH → category (105/115/130/140/155/165/180)
+    heightClassification: PricingLookup; // height → S/M/T snow prefix
     diagonalBracePrice: number;
     diagonalBraceTallSurcharge: number;
     windThresholdByState: PricingLookup; // state → MPH threshold
@@ -187,6 +188,13 @@ export interface WidespanMatrices {
     girtCounts: PricingMatrix;
     trussPriceByState: PricingLookup;
     diagonalBracePrice: number;
+    verticalCountByWidth: PricingLookup; // width → count
+    verticalSpacingByWind: PricingLookup; // wind → spacing inches
+    purlinCostPerFt: number; // $6
+    verticalCostPerFt: number; // $18
+    girtCostPerFt: number; // $6
+    legTrussCostPerFt: number; // $90
+    windLoadMapping2: PricingLookup; // second wind mapping for girts: 90/110/120/130
   };
   changers: {
     widthBuckets: PricingLookup;
