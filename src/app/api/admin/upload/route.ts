@@ -31,15 +31,18 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminClient();
 
   // Create upload record
+  const uploadRow: Record<string, unknown> = {
+    region_id: regionId,
+    filename: file.name,
+    spreadsheet_type: "standard", // will be updated after detection
+    status: "processing",
+  };
+  if (isValidUuid(session.user.profileId)) {
+    uploadRow.uploaded_by = session.user.profileId;
+  }
   const { data: upload, error: uploadError } = await supabase
     .from("asc_uploads")
-    .insert({
-      region_id: regionId,
-      uploaded_by: isValidUuid(session.user.profileId) ? session.user.profileId : null,
-      filename: file.name,
-      spreadsheet_type: "standard", // will be updated after detection
-      status: "processing",
-    })
+    .insert(uploadRow)
     .select()
     .single();
 
