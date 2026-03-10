@@ -16,6 +16,31 @@ import {
 /** Standard truss spacing buckets used in hat channel / girt lookups */
 const TRUSS_SPACING_BUCKETS = [36, 42, 48, 54, 60] as const;
 
+/**
+ * Resolve a state code to one that exists in the truss counts matrix.
+ * Each spreadsheet covers a region (e.g., AZ/CO/UT) but only has columns
+ * for representative states (e.g., "24-AZ" but not "24-CO" or "24-UT").
+ * If the given state isn't found, find the first available state for that width.
+ */
+function resolveEngineeringState(
+  state: string,
+  width: number,
+  trussCounts: Record<string, Record<string, number>>
+): string {
+  // Try exact match first
+  const exactKey = `${width}-${state}`;
+  if (trussCounts[exactKey]) return state;
+
+  // Find any state that exists for this width
+  const prefix = `${width}-`;
+  for (const key of Object.keys(trussCounts)) {
+    if (key.startsWith(prefix)) {
+      return key.slice(prefix.length);
+    }
+  }
+  return state; // fallback to original
+}
+
 /** A-frame roof pitch: 3:12 (3 inches rise per 12 inches run) */
 const ROOF_PITCH = 3 / 12;
 
@@ -136,7 +161,15 @@ export function calculateStandardSnowEngineering(
   if (!config.snowLoad) return 0;
 
   const { width, length, roofKey } = resolvedKeys;
-  const state = config.state || "";
+  const rawState = config.state || "";
+
+  // Resolve state to one that exists in the spreadsheet data
+  // (e.g., CO/UT → AZ for the AZ/CO/UT region spreadsheet)
+  const state = resolveEngineeringState(
+    rawState,
+    width,
+    matrices.snow.trussCounts
+  );
 
   // ── Step 1: Resolve inputs ──
   const bucketedWind = bucketWind(
