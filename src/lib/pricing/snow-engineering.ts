@@ -167,6 +167,11 @@ export function calculateStandardSnowEngineering(
     snowCode,
     configKey
   );
+
+  // If truss spacing = 0 for a valid snow load, the load exceeds standard
+  // engineering → "Contact Engineer" (return -1 as sentinel)
+  if (trussSpacing === 0) return -1;
+
   if (trussSpacing > 0) {
     const lengthInches = length * 12;
     const trussesNeeded = Math.ceil(lengthInches / trussSpacing) + 1;

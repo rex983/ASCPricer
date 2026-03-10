@@ -79,6 +79,7 @@ export interface PriceBreakdown {
   rollUpDoorsSides: number;
   insulation: number;
   snowEngineering: number;
+  contactEngineer?: boolean; // true when snow load exceeds standard engineering
   diagonalBracing: number;
   anchors: number;
   wainscot: number; // widespan only

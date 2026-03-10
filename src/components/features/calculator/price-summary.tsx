@@ -44,7 +44,14 @@ export function PriceSummary({ breakdown, isWidespan }: PriceSummaryProps) {
         <LineItem label="Roll-Up Doors (Sides)" value={breakdown.rollUpDoorsSides} />
         <LineItem label="Insulation" value={breakdown.insulation} />
         {isWidespan && <LineItem label="Wainscot" value={breakdown.wainscot} />}
-        <LineItem label="Snow/Wind Engineering" value={breakdown.snowEngineering} />
+        {breakdown.contactEngineer ? (
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Snow/Wind Engineering</span>
+            <span className="font-medium text-amber-500">Contact Engineer</span>
+          </div>
+        ) : (
+          <LineItem label="Snow/Wind Engineering" value={breakdown.snowEngineering} />
+        )}
         <LineItem label="Diagonal Bracing" value={breakdown.diagonalBracing} />
         <LineItem label="Plans" value={breakdown.plans} />
       </div>
