@@ -241,9 +241,9 @@ export function readVerticals(ws: WorkSheet): {
     dataStartCol: 1,
   });
 
-  // Original vertical counts (usually around row 12-13)
+  // Original vertical counts (around row 8-13 depending on number of wind speeds)
   const originalCounts: PricingLookup = {};
-  for (let r = 10; r < Math.min(20, data.length); r++) {
+  for (let r = 7; r < Math.min(20, data.length); r++) {
     const row = data[r];
     if (!row) continue;
     const label = cleanHeader(row[0]);

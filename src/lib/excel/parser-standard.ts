@@ -23,14 +23,29 @@ import {
   readSnowChangers,
 } from "./sheet-readers/standard-snow";
 
+/** Find a sheet by name, tolerating trailing spaces in sheet names */
+function findSheet(workbook: WorkBook, name: string) {
+  // Try exact match first
+  if (workbook.Sheets[name]) return workbook.Sheets[name];
+  // Try with/without trailing space
+  if (workbook.Sheets[name + " "]) return workbook.Sheets[name + " "];
+  const trimmed = name.trim();
+  if (workbook.Sheets[trimmed]) return workbook.Sheets[trimmed];
+  // Fuzzy: find first sheet whose trimmed name matches
+  for (const key of Object.keys(workbook.Sheets)) {
+    if (key.trim() === trimmed) return workbook.Sheets[key];
+  }
+  return null;
+}
+
 function getSheet(workbook: WorkBook, name: string) {
-  const ws = workbook.Sheets[name];
+  const ws = findSheet(workbook, name);
   if (!ws) throw new Error(`Sheet "${name}" not found in workbook`);
   return ws;
 }
 
 function tryGetSheet(workbook: WorkBook, name: string) {
-  return workbook.Sheets[name] || null;
+  return findSheet(workbook, name);
 }
 
 /**

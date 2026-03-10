@@ -62,10 +62,9 @@ function resolveOriginalGirts(
       return count;
     }
   }
-  // Default
-  if (height <= 9) return 3;
-  if (height <= 12) return 4;
-  if (height <= 15) return 4;
+  // Default (matches spreadsheet: 0-11→3, 12-17→4, 18+→5)
+  if (height <= 11) return 3;
+  if (height <= 17) return 4;
   return 5;
 }
 

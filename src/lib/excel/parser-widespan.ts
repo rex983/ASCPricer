@@ -17,14 +17,25 @@ import {
   readWidespanSnowCalc,
 } from "./sheet-readers/widespan-snow";
 
+/** Find a sheet by name, tolerating trailing spaces in sheet names */
+function findSheet(workbook: WorkBook, name: string) {
+  if (workbook.Sheets[name]) return workbook.Sheets[name];
+  if (workbook.Sheets[name + " "]) return workbook.Sheets[name + " "];
+  const trimmed = name.trim();
+  for (const key of Object.keys(workbook.Sheets)) {
+    if (key.trim() === trimmed) return workbook.Sheets[key];
+  }
+  return null;
+}
+
 function getSheet(workbook: WorkBook, name: string) {
-  const ws = workbook.Sheets[name];
+  const ws = findSheet(workbook, name);
   if (!ws) throw new Error(`Sheet "${name}" not found in workbook`);
   return ws;
 }
 
 function tryGetSheet(workbook: WorkBook, name: string) {
-  return workbook.Sheets[name] || null;
+  return findSheet(workbook, name);
 }
 
 /**
