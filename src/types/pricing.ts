@@ -132,13 +132,15 @@ export interface StandardMatrices {
     hatChannelCounts: PricingMatrix; // [stateWidth][count key] → count
     girtSpacing: PricingMatrix; // ["{bucketedTrussSpacing}"]["{windSpeed}"] → spacing
     girtCountsByHeight: PricingLookup; // height → original girt count
-    verticalSpacing: PricingMatrix; // [windSpeed][height] → spacing
-    verticalCounts: PricingMatrix; // [width]["count"] → count
-    trussPriceByWidthState: PricingMatrix; // ["{width}-{state}"] → price (row=width-state, col=price bucket)
+    verticalSpacing: PricingMatrix; // [height][windSpeed] → spacing
+    verticalCounts: PricingLookup; // width → original count
+    trussPriceByWidthState: PricingMatrix; // [state][width] → price
     channelPriceByState: PricingLookup; // state → $/ft ($2 or $2.50)
     tubingPriceByState: PricingLookup; // state → $/ft ($3-$4)
     windLoadBuckets: PricingLookup; // input MPH → category (105/115/130/140/155/165/180)
-    heightClassification: PricingLookup; // height → S/M/T snow prefix
+    heightClassification: PricingLookup; // height → S(0)/M(1)/T(2)
+    feetUsedByHeight: PricingLookup; // height → feet used for truss leg surcharge
+    pieTrussPrice: PricingLookup; // state → $/ft for truss leg surcharge ($15)
     diagonalBracePrice: number;
     diagonalBraceTallSurcharge: number;
     windThresholdByState: PricingLookup; // state → MPH threshold

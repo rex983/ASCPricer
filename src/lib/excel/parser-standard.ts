@@ -88,15 +88,10 @@ export function parseStandardWorkbook(workbook: WorkBook): StandardMatrices {
     : { spacing: {}, girtCountsByHeight: {} };
   const {
     spacing: verticalSpacing,
-    originalCounts: verticalCountsRaw,
+    originalCounts: verticalCounts,
   } = verticalsSheet
     ? readVerticals(verticalsSheet)
     : { spacing: {}, originalCounts: {} };
-
-  const verticalCounts: Record<string, Record<string, number>> = {};
-  for (const [k, v] of Object.entries(verticalCountsRaw)) {
-    verticalCounts[k] = { count: v };
-  }
 
   const {
     windThresholdByState,
@@ -112,6 +107,8 @@ export function parseStandardWorkbook(workbook: WorkBook): StandardMatrices {
         windLoadBuckets: {},
         snowLoadOptions: {},
         heightClassification: {},
+        feetUsedByHeight: {},
+        pieTrussPrice: {},
         trussPriceByWidthState: {},
         channelPriceByState: {},
         tubingPriceByState: {},
@@ -155,6 +152,8 @@ export function parseStandardWorkbook(workbook: WorkBook): StandardMatrices {
       tubingPriceByState: snowChangers.tubingPriceByState,
       windLoadBuckets: snowChangers.windLoadBuckets,
       heightClassification: snowChangers.heightClassification,
+      feetUsedByHeight: snowChangers.feetUsedByHeight,
+      pieTrussPrice: snowChangers.pieTrussPrice,
       diagonalBracePrice,
       diagonalBraceTallSurcharge,
       windThresholdByState,

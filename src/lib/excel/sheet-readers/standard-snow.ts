@@ -56,17 +56,31 @@ export function readHatChannels(ws: WorkSheet): {
   const spacing: PricingMatrix = {};
   const originalCounts: PricingMatrix = {};
 
-  // Find the split between spacing and original counts sections
+  // Find the "Original Hat Channels" section by looking for the keyword "Original"
+  // in headers, or for a column with state codes (CA, AZ, OH, etc.) as data
   let rightSectionStart = -1;
-  for (let c = 1; c < headers.length; c++) {
+  for (let c = 8; c < headers.length; c++) {
     const h = cleanHeader(headers[c]);
-    if (h === "" || h === "0") {
-      // Check for section break
-      if (rightSectionStart < 0) {
-        const next = cleanHeader(headers[c + 1]);
-        if (next && !["105", "115", "130", "140", "155", "165", "180"].includes(next)) {
-          rightSectionStart = c + 1;
-        }
+    if (h.toLowerCase().includes("original")) {
+      rightSectionStart = c;
+      break;
+    }
+  }
+  // Fallback: find first column after wind speeds that has state codes in its data
+  if (rightSectionStart < 0) {
+    for (let c = 8; c < headers.length; c++) {
+      const h = cleanHeader(headers[c]);
+      // Skip wind speed columns and blanks
+      if (["105", "115", "130", "140", "155", "165", "180", "", "0"].includes(h)) continue;
+      // Check if data rows have state codes
+      let stateCount = 0;
+      for (let r = 1; r < Math.min(10, data.length); r++) {
+        const v = cleanHeader(data[r]?.[c] ?? "");
+        if (v.match(/^[A-Z]{2}$/)) stateCount++;
+      }
+      if (stateCount >= 3) {
+        rightSectionStart = c;
+        break;
       }
     }
   }
@@ -88,18 +102,49 @@ export function readHatChannels(ws: WorkSheet): {
   }
 
   // Read original counts (right side)
+  // Layout: first col of right section = state codes (or "Original Hat Channels" label)
+  // Header row has width values (12, 18, 20, 22, 24, 26, 28, 30)
+  // Data rows: state code in first col, then counts per width
   if (rightSectionStart > 0) {
-    const rightHeaders = data[0] || [];
+    // Find the column with state codes and the width header columns
+    // The header row for widths may be row 0 or a different row
+    let stateCol = rightSectionStart;
+    let widthStartCol = rightSectionStart + 1;
+
+    // Check if rightSectionStart is the "Original" label column
+    const firstHeader = cleanHeader(headers[rightSectionStart]);
+    if (firstHeader.toLowerCase().includes("original") || !firstHeader.match(/^\d+$/)) {
+      stateCol = rightSectionStart;
+      widthStartCol = rightSectionStart + 1;
+    }
+
+    // Find the header row for width values (could be row 0 or the same row)
+    // Width headers should be numbers like 12, 18, 20, etc.
+    let widthHeaders: string[] = [];
+    for (let c = widthStartCol; c < headers.length; c++) {
+      const h = cleanHeader(headers[c]);
+      if (h && num(h) >= 12 && num(h) <= 30) {
+        widthHeaders.push(h);
+      } else {
+        widthHeaders.push("");
+      }
+    }
+
+    // Parse data rows: state code → { width → count }
     for (let r = 1; r < data.length; r++) {
       const row = data[r];
       if (!row) break;
-      for (let c = rightSectionStart; c < headers.length; c++) {
-        const colKey = cleanHeader(rightHeaders[c]);
-        if (!colKey || colKey === "0") continue;
-        const rowKey = cleanHeader(row[rightSectionStart - 1]) || cleanHeader(row[0]);
-        if (!rowKey) break;
-        if (!originalCounts[colKey]) originalCounts[colKey] = {};
-        originalCounts[colKey][rowKey] = num(row[c]);
+      const state = cleanHeader(row[stateCol]);
+      if (!state || !state.match(/^[A-Z]{2}$/)) continue;
+
+      if (!originalCounts[state]) originalCounts[state] = {};
+      for (let c = widthStartCol; c < row.length; c++) {
+        const widthKey = widthHeaders[c - widthStartCol];
+        if (!widthKey) continue;
+        const count = num(row[c]);
+        if (count > 0) {
+          originalCounts[state][widthKey] = count;
+        }
       }
     }
   }
@@ -268,21 +313,29 @@ export function readDiagonalBracing(ws: WorkSheet): {
 
 /**
  * Parse "Snow - Changers" sheet.
- * Resolves wind load, snow load, and other engineering parameters.
  *
- * Sections:
- *   R0-R1: Wind Load Buckets — input MPH → category (105/115/130/140/155/165/180)
- *   R5-R6: Snow Load option labels — "30 Ground Load"→"30GL", "20 Roof Load"→"20LL"
- *   R15-R16: Height classification — height → S/M/T prefix
- *   R36-R46: Per-state pricing:
- *     Truss price by width+state (rows 36-43)
- *     Channel price by state (row 45)
- *     Tubing price by state (row 46)
+ * Actual spreadsheet layout:
+ *   Rows 0-5: Wind load bucketing (input MPH → standard category)
+ *     Row 3: input MPH values across columns (90, 100, 120, 130, 140, 150, 165)
+ *     Row 5: bucketed output (105, 115, 130, 140, 155, 165, 180)
+ *   Rows 8-9: Snow load label → code mapping
+ *   Rows 25-27: Height classification + Feet Used
+ *     Row 25 (or first found): height values (1-20)
+ *     Row 26: S/M/T prefix per height
+ *     Row 27: Feet Used per height (for truss leg surcharge)
+ *   Rows 57-69: Per-state pricing section
+ *     Row 58: state codes across columns (WI, OH, TX, NM, AZ, PA, CA, ...)
+ *     Rows 59-66: truss prices — col 0 = width label, remaining cols = price per state
+ *     Row 67: Pie Truss Price ($15/ft per state)
+ *     Row 68: Channel Price Per Ft ($2-$2.50 per state)
+ *     Row 69: Tubing Price Per Ft ($3-$4 per state)
  */
 export function readSnowChangers(ws: WorkSheet): {
   windLoadBuckets: PricingLookup;
   snowLoadOptions: PricingLookup;
   heightClassification: PricingLookup;
+  feetUsedByHeight: PricingLookup;
+  pieTrussPrice: PricingLookup;
   trussPriceByWidthState: PricingMatrix;
   channelPriceByState: PricingLookup;
   tubingPriceByState: PricingLookup;
@@ -292,12 +345,15 @@ export function readSnowChangers(ws: WorkSheet): {
   const windLoadBuckets: PricingLookup = {};
   const snowLoadOptions: PricingLookup = {};
   const heightClassification: PricingLookup = {};
+  const feetUsedByHeight: PricingLookup = {};
+  const pieTrussPrice: PricingLookup = {};
   const trussPriceByWidthState: PricingMatrix = {};
   const channelPriceByState: PricingLookup = {};
   const tubingPriceByState: PricingLookup = {};
 
-  // Wind load buckets (rows 0-3): input MPH → bucket category
-  for (let r = 0; r < Math.min(5, data.length); r++) {
+  // ── Wind load buckets (rows 0-5) ──
+  // Scan for pairs of rows where one has input MPH and next has bucketed output
+  for (let r = 0; r < Math.min(6, data.length); r++) {
     const row = data[r];
     if (!row) continue;
     for (let c = 0; c < row.length - 1; c += 2) {
@@ -307,23 +363,30 @@ export function readSnowChangers(ws: WorkSheet): {
         windLoadBuckets[String(inputMph)] = bucketMph;
       }
     }
+    // Also try column-aligned pairs: row r has inputs, row r+2 has outputs
+    if (r <= 3 && data[r + 2]) {
+      for (let c = 0; c < row.length; c++) {
+        const inputMph = num(row[c]);
+        const bucketMph = num(data[r + 2]?.[c]);
+        if (inputMph >= 85 && inputMph <= 200 && bucketMph >= 100 && bucketMph <= 200) {
+          windLoadBuckets[String(inputMph)] = bucketMph;
+        }
+      }
+    }
   }
 
-  // Snow load option labels (rows 5-10)
+  // ── Snow load option labels (rows 5-12) ──
   for (let r = 4; r < Math.min(14, data.length); r++) {
     const row = data[r];
     if (!row) continue;
     for (let c = 0; c < row.length; c++) {
       const val = cleanHeader(row[c]);
-      // Match snow codes like "20LL", "30GL", "40GL"
       if (val.match(/^\d+[GL]L$/i)) {
-        // Map description → code
-        const desc = cleanHeader(row[c - 1]) || cleanHeader(row[0]);
+        const desc = c > 0 ? cleanHeader(row[c - 1]) : "";
         if (desc) snowLoadOptions[desc] = num(val.replace(/[GL]L$/i, ""));
       }
-      // Also capture the raw label mapping (e.g. "20 Roof Load" → "20LL")
       if (val.toLowerCase().includes("roof load") || val.toLowerCase().includes("ground load")) {
-        const nextVal = cleanHeader(row[c + 1]);
+        const nextVal = cleanHeader(row[c + 1] ?? "");
         if (nextVal.match(/^\d+[GL]L$/i)) {
           snowLoadOptions[val] = num(nextVal.replace(/[GL]L$/i, ""));
         }
@@ -331,92 +394,114 @@ export function readSnowChangers(ws: WorkSheet): {
     }
   }
 
-  // Height classification (rows 15-20): height → S/M/T prefix
-  for (let r = 14; r < Math.min(25, data.length); r++) {
+  // ── Height classification + Feet Used (rows 20-30) ──
+  // Find row with S/M/T values, then heights row above and feetUsed row below
+  for (let r = 15; r < Math.min(35, data.length); r++) {
     const row = data[r];
     if (!row) continue;
-    for (let c = 0; c < row.length - 1; c += 2) {
-      const heightVal = cleanHeader(row[c]);
-      const prefix = cleanHeader(row[c + 1]);
-      if (prefix.match(/^[SMT]$/) && heightVal) {
-        heightClassification[heightVal] = prefix === "S" ? 0 : prefix === "M" ? 1 : 2;
-      }
-    }
-    // Also scan for "S", "M", "T" in cells with height ranges
+
+    // Count S/M/T values in this row
+    let smtCount = 0;
     for (let c = 0; c < row.length; c++) {
-      const val = cleanHeader(row[c]);
-      if (val === "S" || val === "M" || val === "T") {
-        // Check neighboring cells for height values
-        const prev = cleanHeader(row[c - 1]);
-        if (prev && num(prev) >= 6 && num(prev) <= 20) {
-          heightClassification[prev] = val === "S" ? 0 : val === "M" ? 1 : 2;
+      const v = cleanHeader(row[c]);
+      if (v === "S" || v === "M" || v === "T") smtCount++;
+    }
+
+    if (smtCount >= 5) {
+      // This is the S/M/T row — heights should be in the row above
+      const heightRow = data[r - 1];
+      const feetRow = data[r + 1];
+      if (heightRow) {
+        for (let c = 0; c < row.length; c++) {
+          const prefix = cleanHeader(row[c]);
+          if (prefix !== "S" && prefix !== "M" && prefix !== "T") continue;
+          const h = num(heightRow[c]);
+          if (h >= 1 && h <= 30) {
+            heightClassification[String(h)] = prefix === "S" ? 0 : prefix === "M" ? 1 : 2;
+            if (feetRow) {
+              const feet = num(feetRow[c]);
+              feetUsedByHeight[String(h)] = feet;
+            }
+          }
         }
       }
+      break;
     }
   }
 
-  // Per-state truss pricing (rows 36-43)
-  // Format: state in col 0, then width ranges with prices
-  for (let r = 34; r < Math.min(48, data.length); r++) {
+  // ── Per-state pricing (rows 55-75) ──
+  // Find the state code row (row with multiple 2-letter codes)
+  let stateCodeRow = -1;
+  let stateCodes: string[] = [];
+  for (let r = 50; r < Math.min(75, data.length); r++) {
     const row = data[r];
     if (!row) continue;
-    const stateOrLabel = cleanHeader(row[0]);
-
-    // Detect state rows (2-letter state codes)
-    if (stateOrLabel.match(/^[A-Z]{2}$/)) {
-      // Parse width-price pairs from this row
-      for (let c = 1; c < row.length - 1; c += 2) {
-        const widthRange = cleanHeader(row[c]);
-        const price = num(row[c + 1]);
-        if (price > 0 && widthRange) {
-          // widthRange might be "12-24" or "26-30"
-          if (!trussPriceByWidthState[stateOrLabel]) trussPriceByWidthState[stateOrLabel] = {};
-          trussPriceByWidthState[stateOrLabel][widthRange] = price;
-        }
+    let codeCount = 0;
+    const codes: string[] = [];
+    for (let c = 1; c < row.length; c++) {
+      const v = cleanHeader(row[c]);
+      if (v.match(/^[A-Z]{2}$/)) {
+        codeCount++;
+        codes.push(v);
+      } else {
+        codes.push("");
       }
     }
-
-    // Channel price by state (look for "channel" label)
-    if (stateOrLabel.toLowerCase().includes("channel") || stateOrLabel.toLowerCase().includes("hat")) {
-      for (let c = 1; c < row.length - 1; c += 2) {
-        const state = cleanHeader(row[c]);
-        const price = num(row[c + 1]);
-        if (state.match(/^[A-Z]{2}$/) && price > 0 && price < 10) {
-          channelPriceByState[state] = price;
-        }
-      }
-    }
-
-    // Tubing price by state (look for "tubing" label)
-    if (stateOrLabel.toLowerCase().includes("tubing") || stateOrLabel.toLowerCase().includes("tube")) {
-      for (let c = 1; c < row.length - 1; c += 2) {
-        const state = cleanHeader(row[c]);
-        const price = num(row[c + 1]);
-        if (state.match(/^[A-Z]{2}$/) && price > 0 && price < 10) {
-          tubingPriceByState[state] = price;
-        }
-      }
+    if (codeCount >= 5) {
+      stateCodeRow = r;
+      stateCodes = codes;
+      break;
     }
   }
 
-  // Fallback: scan more broadly for channel/tubing pricing
-  if (Object.keys(channelPriceByState).length === 0) {
-    for (let r = 30; r < Math.min(50, data.length); r++) {
+  if (stateCodeRow >= 0) {
+    // Parse truss price rows (rows after state codes, labeled with width)
+    for (let r = stateCodeRow + 1; r < Math.min(stateCodeRow + 12, data.length); r++) {
       const row = data[r];
       if (!row) continue;
-      for (let c = 0; c < row.length; c++) {
-        const val = cleanHeader(row[c]);
-        if (val.match(/^[A-Z]{2}$/)) {
-          // Check if there's a price in adjacent cells
-          const nextVal = num(row[c + 1]);
-          if (nextVal >= 1.5 && nextVal <= 5) {
-            // Could be channel or tubing price
-            const labelAbove = r > 0 ? cleanHeader(data[r - 1]?.[c] ?? "") : "";
-            if (labelAbove.toLowerCase().includes("channel")) {
-              channelPriceByState[val] = nextVal;
-            } else if (labelAbove.toLowerCase().includes("tub")) {
-              tubingPriceByState[val] = nextVal;
+      const label = cleanHeader(row[0]).toLowerCase();
+
+      if (label.includes("wide") || label.includes("truss")) {
+        // Extract width number from label like "12' Wide Truss" or "12"
+        const widthMatch = label.match(/(\d+)/);
+        if (widthMatch) {
+          const w = widthMatch[1];
+          for (let c = 1; c < row.length && c - 1 < stateCodes.length; c++) {
+            const st = stateCodes[c - 1];
+            if (!st) continue;
+            const price = num(row[c]);
+            if (price > 50 && price < 1000) {
+              if (!trussPriceByWidthState[st]) trussPriceByWidthState[st] = {};
+              trussPriceByWidthState[st][w] = price;
             }
+          }
+        }
+      } else if (label.includes("pie")) {
+        // Pie truss price row
+        for (let c = 1; c < row.length && c - 1 < stateCodes.length; c++) {
+          const st = stateCodes[c - 1];
+          if (!st) continue;
+          const price = num(row[c]);
+          if (price > 0 && price < 100) {
+            pieTrussPrice[st] = price;
+          }
+        }
+      } else if (label.includes("channel")) {
+        for (let c = 1; c < row.length && c - 1 < stateCodes.length; c++) {
+          const st = stateCodes[c - 1];
+          if (!st) continue;
+          const price = num(row[c]);
+          if (price >= 1 && price <= 10) {
+            channelPriceByState[st] = price;
+          }
+        }
+      } else if (label.includes("tubing") || label.includes("tube")) {
+        for (let c = 1; c < row.length && c - 1 < stateCodes.length; c++) {
+          const st = stateCodes[c - 1];
+          if (!st) continue;
+          const price = num(row[c]);
+          if (price >= 1 && price <= 10) {
+            tubingPriceByState[st] = price;
           }
         }
       }
@@ -427,6 +512,8 @@ export function readSnowChangers(ws: WorkSheet): {
     windLoadBuckets,
     snowLoadOptions,
     heightClassification,
+    feetUsedByHeight,
+    pieTrussPrice,
     trussPriceByWidthState,
     channelPriceByState,
     tubingPriceByState,

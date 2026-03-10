@@ -6,7 +6,6 @@ import type {
 } from "@/types/pricing";
 import { lookupMatrix, lookupValue, nearestBucket } from "./lookups";
 import {
-  HEIGHT_MULTIPLIERS,
   WIND_LOAD_CATEGORIES,
   WIDESPAN_WIND_CATEGORIES_MAIN,
   WIDESPAN_WIND_CATEGORIES_GIRT,
@@ -17,29 +16,23 @@ import {
 /** Standard truss spacing buckets used in hat channel / girt lookups */
 const TRUSS_SPACING_BUCKETS = [36, 42, 48, 54, 60] as const;
 
-/** Get the height multiplier for snow engineering costs. */
-export function getHeightMultiplier(height: number): number {
-  if (height >= 19) return HEIGHT_MULTIPLIERS["19-20"];
-  if (height >= 16) return HEIGHT_MULTIPLIERS["16-18"];
-  if (height >= 13) return HEIGHT_MULTIPLIERS["13-15"];
-  return HEIGHT_MULTIPLIERS["6-12"];
-}
+/** A-frame roof pitch: 3:12 (3 inches rise per 12 inches run) */
+const ROOF_PITCH = 3 / 12;
 
 /** Resolve height to S/M/T prefix using heightClassification lookup */
 function getHeightPrefix(
   height: number,
   classification: PricingLookup
 ): string {
-  // Try exact height match
   const val = classification[String(height)];
   if (val !== undefined) {
     if (val === 0) return "S";
     if (val === 1) return "M";
     if (val === 2) return "T";
   }
-  // Fallback: height-based classification
-  if (height <= 12) return "S";
-  if (height <= 15) return "M";
+  // Fallback
+  if (height <= 6) return "S";
+  if (height <= 9) return "M";
   return "T";
 }
 
@@ -49,10 +42,8 @@ function bucketWind(
   buckets: PricingLookup,
   categories: readonly number[]
 ): number {
-  // Try exact lookup first
   const bucketed = buckets[String(inputMph)];
   if (bucketed && bucketed > 0) return bucketed;
-  // Fallback: nearest bucket from categories
   return nearestBucket(inputMph, categories);
 }
 
@@ -78,7 +69,7 @@ function resolveOriginalGirts(
   return 5;
 }
 
-/** Look up truss price for a given width and state from the per-state pricing matrix */
+/** Look up truss price for a given width and state */
 function getTrussPrice(
   width: number,
   state: string,
@@ -87,31 +78,27 @@ function getTrussPrice(
   const stateRow = trussPriceByWidthState[state];
   if (!stateRow) return 190; // fallback
 
-  // Check each width range key (e.g. "12-24", "26-30")
+  // Try exact width match first
+  if (stateRow[String(width)] !== undefined) {
+    return stateRow[String(width)];
+  }
+
+  // Try width range keys (e.g. "12-24", "26-30")
   for (const [rangeKey, price] of Object.entries(stateRow)) {
     const parts = rangeKey.split("-").map(Number);
     if (parts.length === 2 && width >= parts[0] && width <= parts[1]) {
-      return price;
-    }
-    // Exact width match
-    if (parts.length === 1 && parts[0] === width) {
       return price;
     }
   }
   return 190; // fallback
 }
 
-/** Count enclosed vertical surfaces (sides only — girts go on sides) */
-function countEnclosedVerticalSurfaces(config: BuildingConfig): number {
-  let count = 0;
-  if (config.sidesCoverage !== "open") count += config.sidesQty;
-  return count;
-}
-
-/** Calculate vertical-surface perimeter length (sides only, for girts) */
-function getVerticalPerimeter(config: BuildingConfig, length: number): number {
-  const enclosedSides = countEnclosedVerticalSurfaces(config);
-  return enclosedSides * length;
+/** Calculate roof rise for A-frame roof styles */
+function getRoofRise(width: number, roofKey: string): number {
+  if (roofKey === "AFV" || roofKey === "AFH") {
+    return (width / 2) * ROOF_PITCH; // e.g., 24W → 12 run × 0.25 = 3ft
+  }
+  return 0; // standard roof — flat/no rise for vertical calc purposes
 }
 
 // ── Standard Snow Engineering ──
@@ -133,12 +120,14 @@ export function buildSnowConfigKey(
 /**
  * Calculate snow/wind engineering costs for standard buildings.
  *
+ * Based on "Snow - Math Calculations" spreadsheet:
  * Step 1: Resolve inputs (bucket wind, height prefix, snow code, config key)
- * Step 2: Extra trusses
- * Step 3: Extra hat channels (two-stage lookup)
- * Step 4: Extra girts (vertical sides only)
- * Step 5: Extra verticals (uses WIDTH not height)
- * Step 6: Apply height multiplier to total
+ * Step 2: Extra trusses (with leg surcharge via feetUsed × pieTrussPrice)
+ * Step 3: Extra hat channels (two-stage lookup, NO height prefix in HC row key)
+ * Step 4: Extra girts (ONLY if enclosed AND vertical panels)
+ * Step 5: Extra verticals (uses WIDTH; pricing uses peakHeight = eave + roofRise)
+ *
+ * NO global height multiplier — each component handles height individually.
  */
 export function calculateStandardSnowEngineering(
   config: BuildingConfig,
@@ -193,25 +182,35 @@ export function calculateStandardSnowEngineering(
 
     const extraTrusses = Math.max(0, trussesNeeded - originalTrusses);
     if (extraTrusses > 0) {
-      const pricePerTruss = getTrussPrice(
+      const baseTrussPrice = getTrussPrice(
         width,
         state,
         matrices.snow.trussPriceByWidthState
       );
-      totalCost += extraTrusses * pricePerTruss;
+      // Leg surcharge: feetUsed × pieTrussPrice per extra truss
+      const feetUsed = lookupValue(
+        matrices.snow.feetUsedByHeight,
+        String(config.height)
+      );
+      const piePricePerFt = lookupValue(
+        matrices.snow.pieTrussPrice,
+        state
+      ) || 15; // fallback $15
+      const legSurcharge = feetUsed * piePricePerFt;
+      totalCost += extraTrusses * (baseTrussPrice + legSurcharge);
     }
   }
 
   // ── Step 3: Extra Hat Channels (two-stage lookup) ──
-  // Bucket truss spacing to nearest of (36/42/48/54/60)
   const actualTrussSpacing = trussSpacing > 0 ? trussSpacing : 60;
   const bucketedTrussSpacing = nearestBucket(
     actualTrussSpacing,
     TRUSS_SPACING_BUCKETS
   );
 
-  // Row key: "{bucketedTrussSpacing}-{snowCode}"
-  const hcRowKey = `${bucketedTrussSpacing}-${snowCode}`;
+  // HC row key: "{bucketedTrussSpacing}-{snowLoad}" — NO height prefix!
+  // e.g., "60-20LL" not "60-T-20LL"
+  const hcRowKey = `${bucketedTrussSpacing}-${config.snowLoad}`;
   const hatChannelSpacing = lookupMatrix(
     matrices.snow.hatChannelSpacing,
     hcRowKey,
@@ -224,19 +223,18 @@ export function calculateStandardSnowEngineering(
     const channelsPerSide = Math.ceil(barInches / hatChannelSpacing) + 1;
     const totalChannels = channelsPerSide * 2; // both sides of roof
 
-    // Original HC count — from hatChannelCounts matrix
-    const widthStateKey = `${width}-${state}`;
+    // Original HC count: hatChannelCounts[state][width]
     let originalChannels = lookupMatrix(
       matrices.snow.hatChannelCounts,
-      widthStateKey,
-      "count"
+      state,
+      String(width)
     );
-    // Fallback: try just width
+    // Fallback: try width as row key
     if (originalChannels === 0) {
       originalChannels = lookupMatrix(
         matrices.snow.hatChannelCounts,
         String(width),
-        "count"
+        state
       );
     }
 
@@ -249,59 +247,72 @@ export function calculateStandardSnowEngineering(
     }
   }
 
-  // ── Step 4: Extra Girts (only vertical/enclosed sides) ──
-  const girtSpacing = lookupMatrix(
-    matrices.snow.girtSpacing,
-    String(bucketedTrussSpacing),
-    String(bucketedWind)
-  );
-  if (girtSpacing > 0) {
-    const heightInches = config.height * 12;
-    const girtsNeeded = Math.ceil(heightInches / girtSpacing) + 1;
-    const originalGirts = resolveOriginalGirts(
-      config.height,
-      matrices.snow.girtCountsByHeight
-    );
+  // ── Step 4: Extra Girts ──
+  // CRITICAL: Girts are ONLY needed if building is enclosed AND sides are vertical panels
+  const girtsNeeded =
+    isEnclosed && config.sidesOrientation === "vertical";
 
-    const extraGirts = Math.max(0, girtsNeeded - originalGirts);
-    if (extraGirts > 0) {
-      const tubingPrice =
-        lookupValue(matrices.snow.tubingPriceByState, state) || 3;
-      // Girts only on vertical (side) surfaces
-      const perimeter = getVerticalPerimeter(config, length);
-      totalCost += extraGirts * tubingPrice * perimeter;
+  if (girtsNeeded) {
+    const girtSpacing = lookupMatrix(
+      matrices.snow.girtSpacing,
+      String(bucketedTrussSpacing),
+      String(bucketedWind)
+    );
+    if (girtSpacing > 0) {
+      const heightInches = config.height * 12;
+      const girtsRequired = Math.ceil(heightInches / girtSpacing) + 1;
+      const originalGirts = resolveOriginalGirts(
+        config.height,
+        matrices.snow.girtCountsByHeight
+      );
+
+      const extraGirts = Math.max(0, girtsRequired - originalGirts);
+      if (extraGirts > 0) {
+        const tubingPrice =
+          lookupValue(matrices.snow.tubingPriceByState, state) || 3;
+        // Girt perimeter: vertical sides × length + vertical ends × width
+        let perimeter = 0;
+        if (config.sidesCoverage !== "open" && config.sidesOrientation === "vertical") {
+          perimeter += config.sidesQty * length;
+        }
+        if (config.endsQty > 0 && config.endsOrientation === "vertical") {
+          perimeter += config.endsQty * width;
+        }
+        totalCost += extraGirts * tubingPrice * perimeter;
+      }
     }
   }
 
-  // ── Step 5: Extra Verticals (uses WIDTH not height) ──
+  // ── Step 5: Extra Verticals ──
+  // Vertical spacing: matrix[height][windSpeed] (readMatrix without transpose)
   const verticalSpacing = lookupMatrix(
     matrices.snow.verticalSpacing,
-    String(bucketedWind),
-    String(config.height)
+    String(config.height),
+    String(bucketedWind)
   );
   if (verticalSpacing > 0) {
+    // Verticals use WIDTH (not height) for count calculation
     const widthInches = width * 12;
     const verticalsNeeded = Math.ceil(widthInches / verticalSpacing) + 1;
 
-    const originalVerticals = lookupMatrix(
+    // Original vertical count: verticalCounts[width] (PricingLookup)
+    const originalVerticals = lookupValue(
       matrices.snow.verticalCounts,
-      String(width),
-      "count"
+      String(width)
     );
 
     const extraVerticals = Math.max(0, verticalsNeeded - originalVerticals);
     if (extraVerticals > 0) {
       const tubingPrice =
         lookupValue(matrices.snow.tubingPriceByState, state) || 3;
-      // Verticals run the peak height
-      const peakHeight = config.height; // ft
+      // Verticals run the PEAK height (eave + roof rise)
+      const peakHeight = config.height + getRoofRise(width, roofKey);
       totalCost += extraVerticals * tubingPrice * peakHeight;
     }
   }
 
-  // ── Step 6: Apply height multiplier to total ──
-  const heightMult = getHeightMultiplier(config.height);
-  return Math.round(totalCost * heightMult);
+  // NO height multiplier — each component handles height individually
+  return Math.round(totalCost);
 }
 
 // ── Widespan Snow Engineering ──
