@@ -248,11 +248,13 @@ export function readVerticals(ws: WorkSheet): {
     if (!row) continue;
     const label = cleanHeader(row[0]);
     if (label.toLowerCase().includes("original")) {
-      // Next row typically has width→count mapping
+      // This row has width values (12, 18, 20, 22, 24, 26, 28, 30)
+      // Next row has the corresponding counts
+      const widthRow = row;
       const countRow = data[r + 1];
       if (countRow) {
-        for (let c = 1; c < headers.length; c++) {
-          const width = cleanHeader(headers[c]);
+        for (let c = 1; c < widthRow.length; c++) {
+          const width = cleanHeader(widthRow[c]);
           if (width && num(width) >= 12) {
             originalCounts[width] = num(countRow[c]);
           }
