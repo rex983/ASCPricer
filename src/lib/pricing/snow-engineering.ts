@@ -339,12 +339,13 @@ export function calculateStandardSnowEngineering(
     );
 
     const extraVerticals = Math.max(0, verticalsNeeded - originalVerticals);
-    if (extraVerticals > 0) {
+    if (extraVerticals > 0 && config.endsQty > 0) {
       const tubingPrice =
         lookupValue(matrices.snow.tubingPriceByState, state) || 3;
       // Verticals run the PEAK height (eave + roof rise)
       const peakHeight = config.height + getRoofRise(width, roofKey);
-      totalCost += extraVerticals * tubingPrice * peakHeight;
+      // Verticals are installed at each enclosed end wall
+      totalCost += extraVerticals * config.endsQty * tubingPrice * peakHeight;
     }
   }
 
