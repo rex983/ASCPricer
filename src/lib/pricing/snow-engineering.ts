@@ -9,6 +9,7 @@ import {
   WIND_LOAD_CATEGORIES,
   WIDESPAN_WIND_CATEGORIES_MAIN,
   WIDESPAN_WIND_CATEGORIES_GIRT,
+  HEIGHT_MULTIPLIERS,
 } from "./constants";
 
 // ── Helpers ──
@@ -117,12 +118,37 @@ function getTrussPrice(
   return 190; // fallback
 }
 
-/** Calculate roof rise for A-frame roof styles */
+/** Calculate roof rise for A-frame roof styles (rounded up per spreadsheet) */
 function getRoofRise(width: number, roofKey: string): number {
   if (roofKey === "AFV" || roofKey === "AFH") {
-    return (width / 2) * ROOF_PITCH; // e.g., 24W → 12 run × 0.25 = 3ft
+    // Spreadsheet: ROUNDUP(((width/2)*3)/12, 0)
+    return Math.ceil((width / 2) * ROOF_PITCH);
   }
   return 0; // standard roof — flat/no rise for vertical calc purposes
+}
+
+/** Get height multiplier for vertical pricing */
+function getVerticalHeightMultiplier(height: number): number {
+  if (height >= 19) return 3.0;
+  if (height >= 16) return 2.5;
+  if (height >= 13) return 2.0;
+  return 1.0;
+}
+
+/**
+ * Get effective feetUsed for leg surcharge.
+ * Spreadsheet formula: IF(AND(width>=26, height<13), baseFeetUsed*2, baseFeetUsed)
+ * For wider buildings at shorter heights, the tubing is doubled.
+ */
+function getEffectiveFeetUsed(
+  baseFeetUsed: number,
+  width: number,
+  height: number
+): number {
+  if (width >= 26 && height < 13) {
+    return baseFeetUsed * 2;
+  }
+  return baseFeetUsed;
 }
 
 // ── Standard Snow Engineering ──
@@ -201,9 +227,10 @@ export function calculateStandardSnowEngineering(
     configKey
   );
 
-  // If truss spacing = 0 for a valid snow load, the load exceeds standard
-  // engineering → "Contact Engineer" (return -1 as sentinel)
-  if (trussSpacing === 0) return -1;
+  // If truss spacing = 0 or < 18, the load exceeds standard engineering
+  // → "Contact Engineer" (return -1 as sentinel)
+  // Spreadsheet: IF(OR(spacingProduct=0, trussSpacing<18), "Contact Engineering", total)
+  if (trussSpacing === 0 || trussSpacing < 18) return -1;
 
   if (trussSpacing > 0) {
     const lengthInches = length * 12;
@@ -225,10 +252,12 @@ export function calculateStandardSnowEngineering(
         matrices.snow.trussPriceByWidthState
       );
       // Leg surcharge: feetUsed × pieTrussPrice per extra truss
-      const feetUsed = lookupValue(
+      // For width>=26 and height<13, feetUsed is doubled (wider truss legs)
+      const baseFeetUsed = lookupValue(
         matrices.snow.feetUsedByHeight,
         String(config.height)
       );
+      const feetUsed = getEffectiveFeetUsed(baseFeetUsed, width, config.height);
       const piePricePerFt = lookupValue(
         matrices.snow.pieTrussPrice,
         state
@@ -342,14 +371,18 @@ export function calculateStandardSnowEngineering(
     if (extraVerticals > 0 && config.endsQty > 0) {
       const tubingPrice =
         lookupValue(matrices.snow.tubingPriceByState, state) || 3;
-      // Verticals run the PEAK height (eave + roof rise)
+      // Verticals run the PEAK height (eave + rounded-up roof rise)
       const peakHeight = config.height + getRoofRise(width, roofKey);
-      // Verticals are installed at each enclosed end wall
-      totalCost += extraVerticals * config.endsQty * tubingPrice * peakHeight;
+      // Extra verticals × enclosed ends × tubing price × peak height
+      const baseVertCost =
+        extraVerticals * config.endsQty * tubingPrice * peakHeight;
+      // Height multiplier: 13-15→×2, 16-18→×2.5, 19-20→×3
+      // Spreadsheet formula in U20: IF(height=13..15, vertCost*2, IF(16-18, price*2.5*extra, ...))
+      const heightMult = getVerticalHeightMultiplier(config.height);
+      totalCost += baseVertCost * heightMult;
     }
   }
 
-  // NO height multiplier — each component handles height individually
   return Math.round(totalCost);
 }
 
