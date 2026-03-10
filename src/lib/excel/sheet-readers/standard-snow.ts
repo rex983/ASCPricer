@@ -353,26 +353,16 @@ export function readSnowChangers(ws: WorkSheet): {
   const channelPriceByState: PricingLookup = {};
   const tubingPriceByState: PricingLookup = {};
 
-  // ── Wind load buckets (rows 0-5) ──
-  // Scan for pairs of rows where one has input MPH and next has bucketed output
-  for (let r = 0; r < Math.min(6, data.length); r++) {
-    const row = data[r];
-    if (!row) continue;
-    for (let c = 0; c < row.length - 1; c += 2) {
-      const inputMph = num(row[c]);
-      const bucketMph = num(row[c + 1]);
-      if (inputMph >= 85 && inputMph <= 200 && bucketMph >= 100 && bucketMph <= 200) {
+  // ── Wind load buckets (rows 0-1) ──
+  // Row 0: "Wind Load" label in col 0, then sequential MPH values (0, 1, 2, ..., 180) in cols 1+
+  // Row 1: "Roof" label in col 0, then bucketed output per column (105, 105, ..., 115, ..., 130, ...)
+  // The column index maps to input MPH: col N has input = N-1, output = row1[N]
+  if (data[0] && data[1]) {
+    for (let c = 1; c < data[0].length; c++) {
+      const inputMph = num(data[0][c]);
+      const bucketMph = num(data[1][c]);
+      if (inputMph >= 80 && inputMph <= 200 && bucketMph >= 100 && bucketMph <= 200) {
         windLoadBuckets[String(inputMph)] = bucketMph;
-      }
-    }
-    // Also try column-aligned pairs: row r has inputs, row r+2 has outputs
-    if (r <= 3 && data[r + 2]) {
-      for (let c = 0; c < row.length; c++) {
-        const inputMph = num(row[c]);
-        const bucketMph = num(data[r + 2]?.[c]);
-        if (inputMph >= 85 && inputMph <= 200 && bucketMph >= 100 && bucketMph <= 200) {
-          windLoadBuckets[String(inputMph)] = bucketMph;
-        }
       }
     }
   }
