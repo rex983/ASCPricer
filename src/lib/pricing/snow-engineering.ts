@@ -211,9 +211,13 @@ export function calculateStandardSnowEngineering(
   // Snow code: prepend height prefix → e.g., "T-20LL"
   const snowCode = `${heightPrefix}-${config.snowLoad}`;
 
-  // Determine if building is enclosed
+  // Determine if building is enclosed for engineering purposes.
+  // Only vertical panels provide structural bracing — horizontal panels
+  // are treated as "Open" even when sides are fully enclosed.
   const isEnclosed =
-    config.sidesCoverage === "fully_enclosed" && config.endsQty >= 2;
+    config.sidesCoverage === "fully_enclosed" &&
+    config.sidesOrientation === "vertical" &&
+    config.sidesQty >= 2;
 
   // Config key: "{E|O}-{bucketedWind}-{width}-{roofKey}"
   const configKey = buildSnowConfigKey(isEnclosed, bucketedWind, width, roofKey);
