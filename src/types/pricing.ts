@@ -52,6 +52,7 @@ export interface BuildingConfig {
   // Engineering
   snowLoad?: string; // e.g., "20 Roof Load", "30GL"
   windRating: number; // MPH
+  permitRequired?: boolean; // Permit needed — enables irregular building adjustment
   diagonalBracing: boolean;
 
   // Plans & Anchors

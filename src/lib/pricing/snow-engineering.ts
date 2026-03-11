@@ -137,24 +137,39 @@ function getVerticalHeightMultiplier(height: number): number {
 
 /**
  * Apply height-based truss spacing reduction (spreadsheet F54 formula).
- * For tall buildings, the effective truss spacing is reduced:
- *   Height 13-15: spacing - 6
- *   Height 16-20: spacing - 12
- *   Height ≤12: no change
+ * Spreadsheet has 4-way branch based on height AND irregular building:
+ *   Height 13-15, not irregular: spacing - 6
+ *   Height 16-20, not irregular: spacing - 12
+ *   Height 13-15, irregular:     spacing - 12
+ *   Height 16-20, irregular:     spacing - 18
+ *   Height ≤12: uses F52 (load-adjusted, handled by caller)
  * If reduced spacing ≤ 12, returns 0 (Contact Engineering).
  */
 function adjustTrussSpacingForHeight(
   rawSpacing: number,
-  height: number
+  height: number,
+  isIrregular: boolean = false
 ): number {
   let adjusted = rawSpacing;
   if (height >= 16) {
-    adjusted = rawSpacing - 12;
+    adjusted = rawSpacing - (isIrregular ? 18 : 12);
   } else if (height >= 13) {
-    adjusted = rawSpacing - 6;
+    adjusted = rawSpacing - (isIrregular ? 12 : 6);
   }
   if (adjusted <= 12) return 0;
   return adjusted;
+}
+
+/**
+ * Determine if a building is "irregular" (partially enclosed).
+ * Spreadsheet: Lookup table [0,1,1,1,0] for enclosed surface counts 0-4.
+ * A building with 1-3 enclosed surfaces is irregular; 0 or 4 is not.
+ */
+function isIrregularBuilding(config: BuildingConfig): boolean {
+  const enclosedSides = config.sidesCoverage !== "open" ? config.sidesQty : 0;
+  const enclosedEnds = config.endType === "enclosed" ? config.endsQty : 0;
+  const totalEnclosed = enclosedSides + enclosedEnds;
+  return totalEnclosed >= 1 && totalEnclosed <= 3;
 }
 
 /**
@@ -254,17 +269,33 @@ export function calculateStandardSnowEngineering(
     configKey
   );
 
-  // Apply height-based spacing reduction (spreadsheet F54):
-  // Heights 13-15: -6, Heights 16-20: -12
-  const trussSpacing = adjustTrussSpacingForHeight(rawTrussSpacing, config.height);
+  // ── Load adjustment (I106) ──
+  // Spreadsheet I106 = IFS(H106=0→0, H106=1→Q49, H106=2→B106+C106, H106=3→B106+C106)
+  // Q49 = IF(height>12, 6, 0) — leg height adjustment
+  // B106 = H52 = IF(irregular, 6, 0) — irregular building adjustment
+  // H106 = permitFlag(0|2) + loadsFlag(0|1)
+  // Without permit: I106 = Q49 (just height). With permit: I106 = irregular(6) + height(6).
+  const irregular = isIrregularBuilding(config);
+  const heightLoadAdjust = config.height > 12 ? 6 : 0;
+  const irregularLoadAdjust = irregular ? 6 : 0;
+  const loadAdjustment = config.permitRequired
+    ? irregularLoadAdjust + heightLoadAdjust
+    : heightLoadAdjust;
+
+  // E52 = F51 - I106; F52 = IF(E52<=12, 0, E52)
+  // F52 is used for HC bucketing. F54 (height-adjusted from F51) is used for trusses/girts.
+  const f52Raw = rawTrussSpacing - loadAdjustment;
+  const f52TrussSpacing = f52Raw <= 12 ? 0 : f52Raw;
+
+  // Apply height-based spacing reduction (spreadsheet F54, from F51 directly):
+  // F54 has 4-way branch: height × irregular
+  const trussSpacing = adjustTrussSpacingForHeight(rawTrussSpacing, config.height, irregular);
 
   // If truss spacing is too small, the load exceeds standard engineering
   // → "Contact Engineer" (return -1 as sentinel)
-  // Spreadsheet has TWO checks:
-  //   AD20: IF(OR(spacingProduct=0, trussSpacing<18), "Contact Engineering", total)
-  //   K13 (actual output): IF(P2<24, "Contact Engineering", total)
-  // K13 is the gatekeeper that flows to Quote Sheet, so threshold is < 24.
+  // Spreadsheet checks: K13: IF(P2<24), AD20: IF(OR(spacingProduct=0, trussSpacing<18))
   if (trussSpacing === 0 || trussSpacing < 24) return -1;
+  if (f52TrussSpacing === 0) return -1;
 
   if (trussSpacing > 0) {
     const lengthInches = length * 12;
@@ -304,17 +335,24 @@ export function calculateStandardSnowEngineering(
   // ── Step 3: Extra Hat Channels (two-stage lookup) ──
   // HC only applies to AFV (A-Frame Vertical) roofs.
   // Spreadsheet: H12 = IF(roofType="AFV", 1, 0); D17 = (needed - original) * H12
-  // HC bucket uses the F54-adjusted truss spacing
-  const isAFV = roofKey === "AFV" || roofKey === "AFH";
-  const actualTrussSpacing = trussSpacing > 0 ? trussSpacing : 60;
-  const bucketedTrussSpacing = nearestBucket(
-    actualTrussSpacing,
+  // HC bucket uses F52 (load-adjusted, pre-height-adjusted), NOT F54 (height-adjusted).
+  // Girts use the F54-adjusted spacing.
+  const isAFV = roofKey === "AFV";
+  const hcTrussSpacing = f52TrussSpacing > 0 ? f52TrussSpacing : 60;
+  const bucketedHcTrussSpacing = nearestBucket(
+    hcTrussSpacing,
+    TRUSS_SPACING_BUCKETS
+  );
+  // Girt truss spacing uses F54 (height-adjusted)
+  const girtTrussSpacing = trussSpacing > 0 ? trussSpacing : 60;
+  const bucketedGirtTrussSpacing = nearestBucket(
+    girtTrussSpacing,
     TRUSS_SPACING_BUCKETS
   );
 
-  // HC row key: "{bucketedTrussSpacing}-{snowLoad}" — NO height prefix!
+  // HC row key: "{bucketedHcTrussSpacing}-{snowLoad}" — NO height prefix!
   // e.g., "60-20LL" not "60-T-20LL"
-  const hcRowKey = `${bucketedTrussSpacing}-${config.snowLoad}`;
+  const hcRowKey = `${bucketedHcTrussSpacing}-${config.snowLoad}`;
   const hatChannelSpacing = lookupMatrix(
     matrices.snow.hatChannelSpacing,
     hcRowKey,
@@ -363,7 +401,7 @@ export function calculateStandardSnowEngineering(
   if (girtsNeeded) {
     const girtSpacing = lookupMatrix(
       matrices.snow.girtSpacing,
-      String(bucketedTrussSpacing),
+      String(bucketedGirtTrussSpacing),
       String(bucketedWind)
     );
     if (girtSpacing > 0) {
@@ -392,11 +430,11 @@ export function calculateStandardSnowEngineering(
   }
 
   // ── Step 5: Extra Verticals ──
-  // Vertical spacing: matrix[height][windSpeed] (readMatrix without transpose)
+  // Vertical spacing: matrix[windSpeed][height] — rows are wind categories, cols are heights
   const verticalSpacing = lookupMatrix(
     matrices.snow.verticalSpacing,
-    String(config.height),
-    String(bucketedWind)
+    String(bucketedWind),
+    String(config.height)
   );
   if (verticalSpacing > 0) {
     // Verticals use WIDTH (not height) for count calculation
@@ -410,7 +448,9 @@ export function calculateStandardSnowEngineering(
     );
 
     const extraVerticals = Math.max(0, verticalsNeeded - originalVerticals);
-    if (extraVerticals > 0 && config.endsQty > 0) {
+    // Spreadsheet: I34 = IF(endType="Enclosed Ends",1,0); I35 = I34 * endsQty
+    // Verticals only apply to enclosed ends (not gable/extended gable)
+    if (extraVerticals > 0 && config.endType === "enclosed" && config.endsQty > 0) {
       const tubingPrice =
         lookupValue(matrices.snow.tubingPriceByState, state) || 3;
       // Verticals run the PEAK height (eave + rounded-up roof rise)
