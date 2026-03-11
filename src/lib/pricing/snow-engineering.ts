@@ -258,10 +258,13 @@ export function calculateStandardSnowEngineering(
   // Heights 13-15: -6, Heights 16-20: -12
   const trussSpacing = adjustTrussSpacingForHeight(rawTrussSpacing, config.height);
 
-  // If truss spacing = 0 or ≤ 12, the load exceeds standard engineering
+  // If truss spacing is too small, the load exceeds standard engineering
   // → "Contact Engineer" (return -1 as sentinel)
-  // Spreadsheet: IF(OR(spacingProduct=0, trussSpacing<18), "Contact Engineering", total)
-  if (trussSpacing === 0 || trussSpacing < 18) return -1;
+  // Spreadsheet has TWO checks:
+  //   AD20: IF(OR(spacingProduct=0, trussSpacing<18), "Contact Engineering", total)
+  //   K13 (actual output): IF(P2<24, "Contact Engineering", total)
+  // K13 is the gatekeeper that flows to Quote Sheet, so threshold is < 24.
+  if (trussSpacing === 0 || trussSpacing < 24) return -1;
 
   if (trussSpacing > 0) {
     const lengthInches = length * 12;
