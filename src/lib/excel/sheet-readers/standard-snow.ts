@@ -453,7 +453,17 @@ export function readSnowChangers(ws: WorkSheet): {
       if (!row) continue;
       const label = cleanHeader(row[0]).toLowerCase();
 
-      if (label.includes("wide") || label.includes("truss")) {
+      if (label.includes("pie")) {
+        // Pie truss price row — must check BEFORE "truss" since label contains both words
+        for (let c = 1; c < row.length && c - 1 < stateCodes.length; c++) {
+          const st = stateCodes[c - 1];
+          if (!st) continue;
+          const price = num(row[c]);
+          if (price > 0 && price < 100) {
+            pieTrussPrice[st] = price;
+          }
+        }
+      } else if (label.includes("wide") || label.includes("truss")) {
         // Extract width number from label like "12' Wide Truss" or "12"
         const widthMatch = label.match(/(\d+)/);
         if (widthMatch) {
@@ -466,16 +476,6 @@ export function readSnowChangers(ws: WorkSheet): {
               if (!trussPriceByWidthState[st]) trussPriceByWidthState[st] = {};
               trussPriceByWidthState[st][w] = price;
             }
-          }
-        }
-      } else if (label.includes("pie")) {
-        // Pie truss price row
-        for (let c = 1; c < row.length && c - 1 < stateCodes.length; c++) {
-          const st = stateCodes[c - 1];
-          if (!st) continue;
-          const price = num(row[c]);
-          if (price > 0 && price < 100) {
-            pieTrussPrice[st] = price;
           }
         }
       } else if (label.includes("channel")) {

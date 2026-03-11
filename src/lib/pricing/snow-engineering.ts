@@ -88,9 +88,9 @@ function resolveOriginalGirts(
       return count;
     }
   }
-  // Default (matches spreadsheet: 0-11→3, 12-17→4, 18+→5)
-  if (height <= 11) return 3;
-  if (height <= 17) return 4;
+  // Default (matches spreadsheet: 0-10→3, 11-15→4, 16-20→5)
+  if (height <= 10) return 3;
+  if (height <= 15) return 4;
   return 5;
 }
 
@@ -133,6 +133,28 @@ function getVerticalHeightMultiplier(height: number): number {
   if (height >= 16) return 2.5;
   if (height >= 13) return 2.0;
   return 1.0;
+}
+
+/**
+ * Apply height-based truss spacing reduction (spreadsheet F54 formula).
+ * For tall buildings, the effective truss spacing is reduced:
+ *   Height 13-15: spacing - 6
+ *   Height 16-20: spacing - 12
+ *   Height ≤12: no change
+ * If reduced spacing ≤ 12, returns 0 (Contact Engineering).
+ */
+function adjustTrussSpacingForHeight(
+  rawSpacing: number,
+  height: number
+): number {
+  let adjusted = rawSpacing;
+  if (height >= 16) {
+    adjusted = rawSpacing - 12;
+  } else if (height >= 13) {
+    adjusted = rawSpacing - 6;
+  }
+  if (adjusted <= 12) return 0;
+  return adjusted;
 }
 
 /**
@@ -212,12 +234,13 @@ export function calculateStandardSnowEngineering(
   const snowCode = `${heightPrefix}-${config.snowLoad}`;
 
   // Determine if building is enclosed for engineering purposes.
-  // Only vertical panels provide structural bracing — horizontal panels
-  // are treated as "Open" even when sides are fully enclosed.
+  // E/O depends on coverage type and quantities, NOT panel orientation.
+  // Spreadsheet: D66 = IF(B70=4, "E", "O") where B70 counts:
+  //   sides has coverage + ends enclosed + sidesQty=2 + endsQty=2
   const isEnclosed =
-    config.sidesCoverage === "fully_enclosed" &&
-    config.sidesOrientation === "vertical" &&
-    config.sidesQty >= 2;
+    config.sidesCoverage !== "open" &&
+    config.sidesQty >= 2 &&
+    config.endsQty >= 2;
 
   // Config key: "{E|O}-{bucketedWind}-{width}-{roofKey}"
   const configKey = buildSnowConfigKey(isEnclosed, bucketedWind, width, roofKey);
@@ -225,13 +248,17 @@ export function calculateStandardSnowEngineering(
   let totalCost = 0;
 
   // ── Step 2: Extra Trusses ──
-  const trussSpacing = lookupMatrix(
+  const rawTrussSpacing = lookupMatrix(
     matrices.snow.trussSpacing,
     snowCode,
     configKey
   );
 
-  // If truss spacing = 0 or < 18, the load exceeds standard engineering
+  // Apply height-based spacing reduction (spreadsheet F54):
+  // Heights 13-15: -6, Heights 16-20: -12
+  const trussSpacing = adjustTrussSpacingForHeight(rawTrussSpacing, config.height);
+
+  // If truss spacing = 0 or ≤ 12, the load exceeds standard engineering
   // → "Contact Engineer" (return -1 as sentinel)
   // Spreadsheet: IF(OR(spacingProduct=0, trussSpacing<18), "Contact Engineering", total)
   if (trussSpacing === 0 || trussSpacing < 18) return -1;
@@ -272,6 +299,10 @@ export function calculateStandardSnowEngineering(
   }
 
   // ── Step 3: Extra Hat Channels (two-stage lookup) ──
+  // HC only applies to AFV (A-Frame Vertical) roofs.
+  // Spreadsheet: H12 = IF(roofType="AFV", 1, 0); D17 = (needed - original) * H12
+  // HC bucket uses the F54-adjusted truss spacing
+  const isAFV = roofKey === "AFV" || roofKey === "AFH";
   const actualTrussSpacing = trussSpacing > 0 ? trussSpacing : 60;
   const bucketedTrussSpacing = nearestBucket(
     actualTrussSpacing,
@@ -287,7 +318,7 @@ export function calculateStandardSnowEngineering(
     String(bucketedWind)
   );
 
-  if (hatChannelSpacing > 0) {
+  if (isAFV && hatChannelSpacing > 0) {
     const barSize = (width + 2) / 2; // half-width in ft
     const barInches = barSize * 12;
     const channelsPerSide = Math.ceil(barInches / hatChannelSpacing) + 1;
@@ -318,9 +349,13 @@ export function calculateStandardSnowEngineering(
   }
 
   // ── Step 4: Extra Girts ──
-  // CRITICAL: Girts are ONLY needed if building is enclosed AND sides are vertical panels
-  const girtsNeeded =
-    isEnclosed && config.sidesOrientation === "vertical";
+  // Girts require BOTH enclosed building (E) AND vertical panel orientation.
+  // Spreadsheet: H24 = (IF(H20="E",1,0)) * (IF(H21="Yes",1,0))
+  // where H20=E/O (coverage-based), H21=vertical panels flag
+  const hasVerticalPanels =
+    config.sidesOrientation === "vertical" ||
+    config.endsOrientation === "vertical";
+  const girtsNeeded = isEnclosed && hasVerticalPanels;
 
   if (girtsNeeded) {
     const girtSpacing = lookupMatrix(
