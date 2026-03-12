@@ -287,9 +287,12 @@ export function calculateStandardSnowEngineering(
   const f52Raw = rawTrussSpacing - loadAdjustment;
   const f52TrussSpacing = f52Raw <= 12 ? 0 : f52Raw;
 
-  // Apply height-based spacing reduction (spreadsheet F54, from F51 directly):
-  // F54 has 4-way branch: height × irregular
-  const trussSpacing = adjustTrussSpacingForHeight(rawTrussSpacing, config.height, irregular);
+  // Apply height-based spacing reduction (spreadsheet F54):
+  // F54 has 4-way branch for height 13+, else falls through to F52.
+  // Height ≤ 12: F54 = F52 (load-adjusted). Height 13+: F54 = F51 - offset.
+  const trussSpacing = config.height <= 12
+    ? f52TrussSpacing
+    : adjustTrussSpacingForHeight(rawTrussSpacing, config.height, irregular);
 
   // If truss spacing is too small, the load exceeds standard engineering
   // → "Contact Engineer" (return -1 as sentinel)
@@ -430,11 +433,11 @@ export function calculateStandardSnowEngineering(
   }
 
   // ── Step 5: Extra Verticals ──
-  // Vertical spacing: matrix[windSpeed][height] — rows are wind categories, cols are heights
+  // Vertical spacing: readMatrix (no transpose) → matrix[colHeader][rowKey] = matrix[height][windSpeed]
   const verticalSpacing = lookupMatrix(
     matrices.snow.verticalSpacing,
-    String(bucketedWind),
-    String(config.height)
+    String(config.height),
+    String(bucketedWind)
   );
   if (verticalSpacing > 0) {
     // Verticals use WIDTH (not height) for count calculation
