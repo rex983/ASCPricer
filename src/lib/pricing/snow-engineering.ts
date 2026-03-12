@@ -173,6 +173,22 @@ export function isIrregularBuilding(config: BuildingConfig): boolean {
 }
 
 /**
+ * Determine if diagonal bracing is needed using the 3-trigger system.
+ * Triggers: irregular(1), wind>120(2), height>12(1).
+ * Needed when sum > 1, or sum > 0 with permit required.
+ */
+export function isDiagonalBracingNeeded(
+  config: BuildingConfig,
+  permitRequired: boolean
+): boolean {
+  const triggerSum =
+    (isIrregularBuilding(config) ? 1 : 0) +
+    (config.windRating > 120 ? 2 : 0) +
+    (config.height > 12 ? 1 : 0);
+  return triggerSum > 1 || (triggerSum > 0 && permitRequired);
+}
+
+/**
  * Get effective feetUsed for leg surcharge.
  * Spreadsheet formula: IF(AND(width>=26, height<13), baseFeetUsed*2, baseFeetUsed)
  * For wider buildings at shorter heights, the tubing is doubled.

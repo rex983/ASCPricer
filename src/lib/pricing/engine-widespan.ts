@@ -8,7 +8,7 @@ import { lookupMatrix, lookupValue } from "./lookups";
 import { SHEET_METAL_MULTIPLIERS } from "./constants";
 import {
   calculateWidespanSnowEngineering,
-  isIrregularBuilding,
+  isDiagonalBracingNeeded,
 } from "./snow-engineering";
 import {
   WIDESPAN_BRACE_COUNT_SHORT,
@@ -141,13 +141,7 @@ export function calculateWidespanPrice(
   );
 
   // ── Diagonal Bracing (automatic — 3-trigger system) ──
-  const irregular = isIrregularBuilding(config);
-  const triggerIrregular = irregular ? 1 : 0;
-  const triggerWind = config.windRating > 120 ? 2 : 0;
-  const triggerHeight = config.height > 12 ? 1 : 0;
-  const triggerSum = triggerIrregular + triggerWind + triggerHeight;
-
-  const dbNeeded = triggerSum > 1 || (triggerSum > 0 && false); // widespan has no permitRequired flag
+  const dbNeeded = isDiagonalBracingNeeded(config, false);
 
   let diagonalBracing = 0;
   if (dbNeeded) {
