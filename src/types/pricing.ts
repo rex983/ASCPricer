@@ -52,7 +52,6 @@ export interface BuildingConfig {
   // Engineering
   snowLoad?: string; // e.g., "20 Roof Load", "30GL"
   windRating: number; // MPH
-  permitRequired?: boolean; // Permit needed — enables irregular building adjustment
   diagonalBracing: boolean;
 
   // Plans & Anchors
@@ -146,6 +145,7 @@ export interface StandardMatrices {
     diagonalBracePrice: number;
     diagonalBraceTallSurcharge: number;
     windThresholdByState: PricingLookup; // state → MPH threshold
+    permitRequired: boolean; // region-level permit flag (parsed from Quote Sheet B27)
   };
   changers: {
     widthBuckets: PricingLookup; // raw width → bucket

@@ -100,7 +100,6 @@ function getDefaultConfig(type: SpreadsheetType): BuildingConfig {
     insulationQty: 0,
     wainscot: "none",
     windRating: 90,
-    permitRequired: false,
     diagonalBracing: false,
     includePlans: false,
     taxRate: 0,
@@ -683,14 +682,6 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
             </div>
 
             <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={config.permitRequired ?? false}
-                  onCheckedChange={(v) => update("permitRequired", v)}
-                />
-                <Label>Permit Required</Label>
-              </div>
-
               <div className="flex items-center gap-2">
                 <Switch
                   checked={config.diagonalBracing}

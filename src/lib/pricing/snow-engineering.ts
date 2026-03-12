@@ -278,7 +278,8 @@ export function calculateStandardSnowEngineering(
   const irregular = isIrregularBuilding(config);
   const heightLoadAdjust = config.height > 12 ? 6 : 0;
   const irregularLoadAdjust = irregular ? 6 : 0;
-  const loadAdjustment = config.permitRequired
+  const permitRequired = matrices.snow.permitRequired ?? false;
+  const loadAdjustment = permitRequired
     ? irregularLoadAdjust + heightLoadAdjust
     : heightLoadAdjust;
 

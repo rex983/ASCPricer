@@ -1,4 +1,5 @@
 import type { WorkBook } from "xlsx";
+import { utils as XLSXUtils } from "xlsx";
 import type { StandardMatrices } from "@/types/pricing";
 import { readBasePrice } from "./sheet-readers/standard-base";
 import { readRoofStyle } from "./sheet-readers/standard-roof-style";
@@ -129,6 +130,15 @@ export function parseStandardWorkbook(workbook: WorkBook): StandardMatrices {
         tubingPriceByState: {},
       };
 
+  // Parse permit flag from Quote Sheet B27 (region-level, "Yes" or "No")
+  const quoteSheet = tryGetSheet(workbook, "Quote Sheet");
+  let permitRequired = false;
+  if (quoteSheet) {
+    const cellRef = quoteSheet["B27"];
+    const val = cellRef ? String(cellRef.v ?? "").trim().toLowerCase() : "";
+    permitRequired = val === "yes";
+  }
+
   return {
     type: "standard",
     basePrice,
@@ -172,6 +182,7 @@ export function parseStandardWorkbook(workbook: WorkBook): StandardMatrices {
       diagonalBracePrice,
       diagonalBraceTallSurcharge,
       windThresholdByState,
+      permitRequired,
     },
     changers,
   };
