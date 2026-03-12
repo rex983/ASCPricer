@@ -7,11 +7,10 @@ import { resolveStandardKeys } from "./changers";
 import { lookupWithLengthExtrapolation } from "./length-extrapolation";
 import { lookupMatrix, lookupValue } from "./lookups";
 import { getStandardBuildingType } from "./building-type";
-import { calculateStandardSnowEngineering } from "./snow-engineering";
 import {
-  STANDARD_BRACE_BASE_PRICE,
-  STANDARD_BRACE_TALL_SURCHARGE,
-} from "./constants";
+  calculateStandardSnowEngineering,
+  isIrregularBuilding,
+} from "./snow-engineering";
 
 /**
  * Calculate full price breakdown for a standard building (width ≤ 30).
@@ -159,27 +158,38 @@ export function calculateStandardPrice(
   const contactEngineer = snowRaw === -1; // -1 = beyond standard engineering
   const snowEngineering = contactEngineer ? 0 : snowRaw;
 
-  // ── Diagonal Bracing ──
+  // ── Diagonal Bracing (automatic — 3-trigger system) ──
+  const irregular = isIrregularBuilding(config);
+  const triggerIrregular = irregular ? 1 : 0;
+  const triggerWind = config.windRating > 120 ? 2 : 0;
+  const triggerHeight = config.height > 12 ? 1 : 0;
+  const triggerSum = triggerIrregular + triggerWind + triggerHeight;
+
+  const permitRequired = matrices.snow.permitRequired ?? false;
+  const dbNeeded = triggerSum > 1 || (triggerSum > 0 && permitRequired);
+
   let diagonalBracing = 0;
-  if (config.diagonalBracing) {
-    const bracePrice = matrices.snow.diagonalBracePrice || STANDARD_BRACE_BASE_PRICE;
-    const tallSurcharge =
-      config.height > 12
-        ? matrices.snow.diagonalBraceTallSurcharge || STANDARD_BRACE_TALL_SURCHARGE
-        : 0;
+  if (dbNeeded) {
+    const basePrice = matrices.snow.diagonalBracePrice || 90;
+    const tallSurcharge = config.height > 12
+      ? (matrices.snow.diagonalBraceTallSurcharge || 50) : 0;
+    const pricePerBrace = basePrice + tallSurcharge;
 
-    let needsBracing = true;
-    if (config.state && Object.keys(matrices.snow.windThresholdByState).length > 0) {
-      const threshold = matrices.snow.windThresholdByState[config.state];
-      if (threshold && config.windRating < threshold) {
-        needsBracing = false;
-      }
+    const isFullyEnclosed = config.sidesCoverage !== "open"
+      && config.sidesQty >= 2
+      && config.endType === "enclosed"
+      && config.endsQty >= 2;
+
+    let braceCount: number;
+    if (isFullyEnclosed) {
+      braceCount = keys.length <= 50 ? 8 : 10;
+    } else {
+      const endBonus = (config.endType === "enclosed" && config.endsQty > 0)
+        ? config.endsQty * 2 : 0;
+      braceCount = (keys.length <= 50 ? 4 : 6) + endBonus;
     }
 
-    if (needsBracing) {
-      const braceCount = keys.length <= 50 ? 8 : 10;
-      diagonalBracing = braceCount * (bracePrice + tallSurcharge);
-    }
+    diagonalBracing = braceCount * pricePerBrace;
   }
 
   // ── Plans ──

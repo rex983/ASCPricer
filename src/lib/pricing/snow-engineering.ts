@@ -165,7 +165,7 @@ function adjustTrussSpacingForHeight(
  * Spreadsheet: Lookup table [0,1,1,1,0] for enclosed surface counts 0-4.
  * A building with 1-3 enclosed surfaces is irregular; 0 or 4 is not.
  */
-function isIrregularBuilding(config: BuildingConfig): boolean {
+export function isIrregularBuilding(config: BuildingConfig): boolean {
   const enclosedSides = config.sidesCoverage !== "open" ? config.sidesQty : 0;
   const enclosedEnds = config.endType === "enclosed" ? config.endsQty : 0;
   const totalEnclosed = enclosedSides + enclosedEnds;

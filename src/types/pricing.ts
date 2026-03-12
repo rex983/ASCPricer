@@ -52,8 +52,6 @@ export interface BuildingConfig {
   // Engineering
   snowLoad?: string; // e.g., "20 Roof Load", "30GL"
   windRating: number; // MPH
-  diagonalBracing: boolean;
-
   // Plans & Anchors
   includePlans?: boolean;
   anchorType?: string;
