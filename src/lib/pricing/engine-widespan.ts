@@ -120,7 +120,7 @@ export function calculateWidespanPrice(
     const roofRaw = (keys.width + 3) * keys.length * rate;
 
     if (config.insulationScope === "roof_only") {
-      insulation = Math.round(roofRaw / 10) * 10;
+      insulation = Math.ceil(roofRaw / 10) * 10;
     } else {
       const sideRaw = (config.height + 2) * keys.length * config.sidesQty * rate;
       const endRaw = (config.height + 3) * keys.width * config.endsQty * rate;
