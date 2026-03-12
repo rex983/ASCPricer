@@ -97,7 +97,7 @@ function getDefaultConfig(type: SpreadsheetType): BuildingConfig {
     rollUpSideSize: undefined,
     rollUpSideQty: 0,
     insulationType: "none",
-    insulationQty: 0,
+    insulationScope: "none",
     wainscot: "none",
     windRating: 90,
     includePlans: false,
@@ -575,38 +575,77 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
               {isWidespan ? "Insulation & Wainscot" : "Insulation"}
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Insulation</Label>
-              <Select
-                value={config.insulationType}
-                onValueChange={(v) => update("insulationType", v as BuildingConfig["insulationType"])}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {INSULATION_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {isWidespan && (
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
               <div className="space-y-2">
-                <Label>Wainscot</Label>
+                <Label>Type</Label>
                 <Select
-                  value={config.wainscot || "none"}
-                  onValueChange={(v) => update("wainscot", v as BuildingConfig["wainscot"])}
+                  value={config.insulationType}
+                  onValueChange={(v) => {
+                    const type = v as BuildingConfig["insulationType"];
+                    setConfig((prev) => ({
+                      ...prev,
+                      insulationType: type,
+                      insulationScope: type === "none" ? "none" : prev.insulationScope === "none" ? "fully_insulated" : prev.insulationScope,
+                    }));
+                  }}
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {WAINSCOT_OPTIONS.map((opt) => (
+                    {INSULATION_OPTIONS.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-            )}
+
+              {config.insulationType !== "none" && (() => {
+                const isAFV = config.roofStyle === "a_frame_vertical" || isWidespan;
+                const allVertical = isAFV
+                  && config.sidesOrientation === "vertical"
+                  && config.endsOrientation === "vertical";
+                return (
+                  <div className="space-y-2">
+                    <Label>Scope</Label>
+                    <Select
+                      value={config.insulationScope}
+                      onValueChange={(v) => update("insulationScope", v as BuildingConfig["insulationScope"])}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        <SelectItem value="roof_only" disabled={!isAFV}>Roof Only</SelectItem>
+                        <SelectItem value="fully_insulated" disabled={!allVertical}>Fully Insulated</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {!allVertical && config.insulationScope !== "none" && (
+                      <p className="text-xs text-muted-foreground">
+                        {!isAFV
+                          ? "Insulation requires A-Frame Vertical roof"
+                          : "Fully Insulated requires all vertical panels"}
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {isWidespan && (
+                <div className="space-y-2">
+                  <Label>Wainscot</Label>
+                  <Select
+                    value={config.wainscot || "none"}
+                    onValueChange={(v) => update("wainscot", v as BuildingConfig["wainscot"])}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {WAINSCOT_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 

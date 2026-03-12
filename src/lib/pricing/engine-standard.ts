@@ -144,17 +144,22 @@ export function calculateStandardPrice(
 
   // ── Insulation ──
   let insulation = 0;
-  if (config.insulationType !== "none") {
+  if (config.insulationType !== "none" && config.insulationScope !== "none") {
     const rate =
       config.insulationType === "fiberglass"
         ? matrices.insulation.fiberglassRate
         : matrices.insulation.thermalRate;
 
-    const roofSqFt = keys.width * keys.length;
-    const sideSqFt = config.height * keys.length * config.sidesQty;
-    const endSqFt = config.height * keys.width * config.endsQty;
-    const totalSqFt = roofSqFt + sideSqFt + endSqFt;
-    insulation = Math.round((totalSqFt * rate) / 10) * 10;
+    // Spreadsheet adds overhang: roof +3 to width, sides +2 to height, ends +3 to height
+    const roofRaw = (keys.width + 3) * keys.length * rate;
+
+    if (config.insulationScope === "roof_only") {
+      insulation = Math.round(roofRaw / 10) * 10;
+    } else {
+      const sideRaw = (config.height + 2) * keys.length * config.sidesQty * rate;
+      const endRaw = (config.height + 3) * keys.width * config.endsQty * rate;
+      insulation = Math.round((roofRaw + sideRaw + endRaw) / 10) * 10;
+    }
   }
 
   // ── Snow Engineering ──

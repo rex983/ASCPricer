@@ -8,6 +8,7 @@ export type PanelOrientation = "horizontal" | "vertical";
 export type Gauge = 12 | 14;
 export type SheetMetal = "29g_agg" | "26g_agg" | "26g_pbr"; // widespan only
 export type InsulationType = "fiberglass" | "thermal" | "none";
+export type InsulationScope = "none" | "roof_only" | "fully_insulated";
 
 export interface BuildingConfig {
   // Core dimensions
@@ -44,7 +45,7 @@ export interface BuildingConfig {
 
   // Insulation
   insulationType: InsulationType;
-  insulationQty: number; // number of sides/components to insulate
+  insulationScope: InsulationScope;
 
   // Wainscot (widespan only)
   wainscot?: "none" | "full" | "sides" | "ends";
