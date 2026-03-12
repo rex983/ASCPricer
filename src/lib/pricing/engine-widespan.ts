@@ -177,7 +177,7 @@ export function calculateWidespanPrice(
   const subtotal =
     basePrice + legs + sides + ends +
     walkInDoors + windows + rollUpDoorsEnds + rollUpDoorsSides +
-    insulation + wainscot + snowEngineering + diagonalBracing + plans;
+    insulation + wainscot + snowEngineering + diagonalBracing;
 
   const taxAmount = Math.round(subtotal * config.taxRate * 100) / 100;
   const total = subtotal + taxAmount + laborEquipment;

@@ -209,7 +209,7 @@ export function calculateStandardPrice(
   const subtotal =
     basePrice + roofStyle + legs + sides + ends +
     walkInDoors + windows + rollUpDoorsEnds + rollUpDoorsSides +
-    insulation + snowEngineering + diagonalBracing + plans;
+    insulation + snowEngineering + diagonalBracing;
 
   const taxAmount = Math.round(subtotal * config.taxRate * 100) / 100;
   const total = subtotal + taxAmount + laborEquipment;

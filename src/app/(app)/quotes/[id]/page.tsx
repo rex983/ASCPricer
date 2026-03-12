@@ -276,7 +276,6 @@ export default function QuoteDetailPage() {
                   <PriceLine label="Wainscot" value={p.wainscot} />
                   <PriceLine label="Snow/Wind" value={p.snowEngineering} />
                   <PriceLine label="Diagonal Bracing" value={p.diagonalBracing} />
-                  <PriceLine label="Plans" value={p.plans} />
 
                   <Separator />
 
@@ -298,6 +297,22 @@ export default function QuoteDetailPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {p.plans > 0 && (
+                <Card className="mt-4 bg-muted/30">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-base">Additional Costs</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <PriceLine label="Plans & Calculations" value={p.plans} />
+                    <Separator />
+                    <div className="flex justify-between text-sm font-medium">
+                      <span>Additional Total</span>
+                      <span>{formatCurrency(p.plans)}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </div>
         </div>
