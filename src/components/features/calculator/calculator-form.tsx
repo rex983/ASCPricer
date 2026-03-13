@@ -119,11 +119,19 @@ function getAccessoryOptions(matrices: PricingMatrices | null) {
 
   // Standard has separate ends/sides roll-up price columns
   // Widespan uses a single rollUpDoors lookup
+  // Also handle old schema where standard had rollUpDoors instead of rollUpEnds/rollUpSides
   let rollUpEnds: string[];
   let rollUpSides: string[];
   if (matrices.type === "standard") {
-    rollUpEnds = Object.keys(matrices.accessories.rollUpEnds || {});
-    rollUpSides = Object.keys(matrices.accessories.rollUpSides || {});
+    const stdAcc = matrices.accessories as Record<string, unknown>;
+    rollUpEnds = Object.keys(
+      (stdAcc.rollUpEnds as Record<string, number>) ||
+      (stdAcc.rollUpDoors as Record<string, number>) || {}
+    );
+    rollUpSides = Object.keys(
+      (stdAcc.rollUpSides as Record<string, number>) ||
+      (stdAcc.rollUpDoors as Record<string, number>) || {}
+    );
   } else {
     rollUpEnds = Object.keys(matrices.accessories.rollUpDoors || {});
     rollUpSides = Object.keys(matrices.accessories.rollUpDoors || {});

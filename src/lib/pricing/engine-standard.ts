@@ -127,27 +127,32 @@ export function calculateStandardPrice(
   // ── Roll-Up Doors ──
   // Ends and sides have separate price columns in the spreadsheet
   // Each location supports two size/qty slots
+  // Fall back to old rollUpDoors field for data uploaded before the schema change
+  const acc = matrices.accessories as Record<string, unknown>;
+  const endsLookup = (acc.rollUpEnds || acc.rollUpDoors || {}) as Record<string, number>;
+  const sidesLookup = (acc.rollUpSides || acc.rollUpDoors || {}) as Record<string, number>;
+
   let rollUpDoorsEnds = 0;
   if (config.rollUpEndSize1 && config.rollUpEndQty1 > 0) {
     rollUpDoorsEnds +=
-      lookupValue(matrices.accessories.rollUpEnds, config.rollUpEndSize1) *
+      lookupValue(endsLookup, config.rollUpEndSize1) *
       config.rollUpEndQty1;
   }
   if (config.rollUpEndSize2 && config.rollUpEndQty2 > 0) {
     rollUpDoorsEnds +=
-      lookupValue(matrices.accessories.rollUpEnds, config.rollUpEndSize2) *
+      lookupValue(endsLookup, config.rollUpEndSize2) *
       config.rollUpEndQty2;
   }
 
   let rollUpDoorsSides = 0;
   if (config.rollUpSideSize1 && config.rollUpSideQty1 > 0) {
     rollUpDoorsSides +=
-      lookupValue(matrices.accessories.rollUpSides, config.rollUpSideSize1) *
+      lookupValue(sidesLookup, config.rollUpSideSize1) *
       config.rollUpSideQty1;
   }
   if (config.rollUpSideSize2 && config.rollUpSideQty2 > 0) {
     rollUpDoorsSides +=
-      lookupValue(matrices.accessories.rollUpSides, config.rollUpSideSize2) *
+      lookupValue(sidesLookup, config.rollUpSideSize2) *
       config.rollUpSideQty2;
   }
 
