@@ -82,7 +82,8 @@ export interface PriceBreakdown {
   diagonalBracing: number;
   anchors: number;
   wainscot: number; // widespan only
-  plans: number;
+  plans: number; // specific plans cost (not in subtotal)
+  calculations: number; // calculations cost (not in subtotal)
   subtotal: number;
   laborEquipment: number;
   taxRate: number;
@@ -123,8 +124,11 @@ export interface StandardMatrices {
   };
   anchors: PricingLookup; // [widthXendCount] → anchor count
   laborEquipment: PricingMatrix; // [width-type][length] → price
-  plans: PricingMatrix; // [width][length] → price
+  plans: PricingMatrix; // [width][length] → base plans price
+  calculations: PricingMatrix; // [width][length] → calculations price
   plansSnowSurcharge: PricingLookup; // snow load → surcharge
+  plansLegSurcharge: PricingLookup; // height → leg surcharge for plans
+  plansDoorOpeningCost: PricingLookup; // doorCount → door opening cost for plans
   snow: {
     trussSpacing: PricingMatrix; // [snowCode][configKey] → spacing
     trussCounts: PricingMatrix; // ["{width}-{state}"]["{length}"] → count

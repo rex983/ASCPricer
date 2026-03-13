@@ -82,16 +82,17 @@ export function PriceSummary({ breakdown, isWidespan }: PriceSummaryProps) {
       </div>
 
       {/* Additional Costs (separate from building price) */}
-      {breakdown.plans > 0 && (
+      {(breakdown.plans > 0 || breakdown.calculations > 0) && (
         <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
           <h3 className="font-semibold text-sm">Additional Costs</h3>
           <div className="space-y-1.5">
-            <LineItem label="Plans & Calculations" value={breakdown.plans} />
+            <LineItem label="Specific Plans Cost" value={breakdown.plans} />
+            <LineItem label="Calculations Cost" value={breakdown.calculations} />
           </div>
           <Separator />
           <div className="flex justify-between text-sm font-medium">
             <span>Additional Total</span>
-            <span>{formatCurrency(breakdown.plans)}</span>
+            <span>{formatCurrency(breakdown.plans + breakdown.calculations)}</span>
           </div>
         </div>
       )}

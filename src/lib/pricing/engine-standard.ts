@@ -14,6 +14,7 @@ import {
 import {
   STANDARD_BRACE_BASE_PRICE,
   STANDARD_BRACE_TALL_SURCHARGE,
+  PLANS_SNOW_SURCHARGE,
 } from "./constants";
 
 /**
@@ -195,10 +196,30 @@ export function calculateStandardPrice(
     diagonalBracing = braceCount * pricePerBrace;
   }
 
-  // ── Plans ──
-  const plans = config.includePlans
-    ? lookupMatrix(matrices.plans, String(keys.width), String(keys.length))
-    : 0;
+  // ── Plans & Calculations (separate from building price) ──
+  let plans = 0;
+  let calculations = 0;
+  if (config.includePlans) {
+    // Base plans cost from matrix
+    const basePlans = lookupMatrix(matrices.plans, String(keys.width), String(keys.length));
+
+    // Leg height surcharge (height 13+ adds $150-$600)
+    const legSurcharge = lookupValue(matrices.plansLegSurcharge, String(config.height));
+
+    // Door opening cost (3+ roll-up doors adds $100-$325)
+    const totalDoorOpenings = config.rollUpEndQty + config.rollUpSideQty;
+    const doorOpeningCost = lookupValue(matrices.plansDoorOpeningCost, String(totalDoorOpenings));
+
+    // Snow load surcharge (based on snow load selection)
+    const snowSurcharge = config.snowLoad
+      ? (PLANS_SNOW_SURCHARGE[config.snowLoad] ?? 0)
+      : 0;
+
+    plans = basePlans + legSurcharge + doorOpeningCost + snowSurcharge;
+
+    // Calculations cost — simple matrix lookup, no surcharges
+    calculations = lookupMatrix(matrices.calculations, String(keys.width), String(keys.length));
+  }
 
   // ── Labor/Equipment ──
   const typeCode = buildingType === "M" ? "S" : buildingType;
@@ -218,7 +239,7 @@ export function calculateStandardPrice(
     basePrice, roofStyle, legs, sides, ends,
     walkInDoors, windows, rollUpDoorsEnds, rollUpDoorsSides,
     insulation, snowEngineering, contactEngineer, diagonalBracing,
-    anchors: 0, wainscot: 0, plans,
+    anchors: 0, wainscot: 0, plans, calculations,
     subtotal, laborEquipment,
     taxRate: config.taxRate, taxAmount, total,
   };

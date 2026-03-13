@@ -126,3 +126,22 @@ export const WIDESPAN_BRACE_PRICE = 350;
 // Standard diagonal bracing
 export const STANDARD_BRACE_BASE_PRICE = 90;
 export const STANDARD_BRACE_TALL_SURCHARGE = 50; // if height > 12
+
+// Plans snow load surcharges (from "Plans for Buildings" E38 formula)
+// 20LL/30GL = no surcharge (base load), higher loads add progressively more
+export const PLANS_SNOW_SURCHARGE: Record<string, number> = {
+  "20LL": 0,
+  "30GL": 0,
+  "27LL": 225,
+  "40GL": 225,
+  "34LL": 300,
+  "50GL": 300,
+  "41LL": 375,
+  "60GL": 375,
+  "47LL": 450,
+  "70GL": 450,
+  "54LL": 525,
+  "80GL": 525,
+  "90GL": 750,
+  "61LL": 900,
+};

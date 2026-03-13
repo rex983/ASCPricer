@@ -12,7 +12,12 @@ import {
 } from "./sheet-readers/standard-accessories";
 import { readAnchors } from "./sheet-readers/standard-anchors";
 import { readLaborEquipment } from "./sheet-readers/standard-labor";
-import { readPlans } from "./sheet-readers/standard-plans";
+import {
+  readPlans,
+  readCalculations,
+  readPlansLegSurcharge,
+  readPlansDoorOpeningCost,
+} from "./sheet-readers/standard-plans";
 import { readChangers } from "./sheet-readers/standard-changers";
 import {
   readTrussSpacing,
@@ -77,7 +82,11 @@ export function parseStandardWorkbook(workbook: WorkBook): StandardMatrices {
   const laborEquipment = readLaborEquipment(
     getSheet(workbook, "Pricing - Labor-EQ")
   );
-  const plans = readPlans(getSheet(workbook, "Plans for Buildings"));
+  const plansSheet = getSheet(workbook, "Plans for Buildings");
+  const plans = readPlans(plansSheet);
+  const calculations = readCalculations(plansSheet);
+  const plansLegSurcharge = readPlansLegSurcharge(plansSheet);
+  const plansDoorOpeningCost = readPlansDoorOpeningCost(plansSheet);
 
   // Changers
   const changers = readChangers(getSheet(workbook, "Pricing - Changers"));
@@ -162,7 +171,10 @@ export function parseStandardWorkbook(workbook: WorkBook): StandardMatrices {
     anchors,
     laborEquipment,
     plans,
+    calculations,
     plansSnowSurcharge: snowChangers.snowLoadOptions,
+    plansLegSurcharge,
+    plansDoorOpeningCost,
     snow: {
       trussSpacing,
       trussCounts,

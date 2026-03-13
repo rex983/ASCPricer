@@ -298,17 +298,18 @@ export default function QuoteDetailPage() {
                 </CardContent>
               </Card>
 
-              {p.plans > 0 && (
+              {(p.plans > 0 || p.calculations > 0) && (
                 <Card className="mt-4 bg-muted/30">
                   <CardHeader className="pb-4">
                     <CardTitle className="text-base">Additional Costs</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    <PriceLine label="Plans & Calculations" value={p.plans} />
+                    <PriceLine label="Specific Plans Cost" value={p.plans} />
+                    <PriceLine label="Calculations Cost" value={p.calculations ?? 0} />
                     <Separator />
                     <div className="flex justify-between text-sm font-medium">
                       <span>Additional Total</span>
-                      <span>{formatCurrency(p.plans)}</span>
+                      <span>{formatCurrency(p.plans + (p.calculations ?? 0))}</span>
                     </div>
                   </CardContent>
                 </Card>

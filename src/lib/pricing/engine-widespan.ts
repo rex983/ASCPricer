@@ -161,10 +161,12 @@ export function calculateWidespanPrice(
     diagonalBracing = braceCount * bracePrice;
   }
 
-  // ── Plans ──
+  // ── Plans & Calculations (separate from building price) ──
+  // Widespan "Plans & Calcs" sheet — plans is a simple lookup, no surcharges yet
   const plans = config.includePlans
     ? lookupMatrix(matrices.plans, String(keys.width), String(keys.length))
     : 0;
+  const calculations = 0; // TODO: parse widespan calcs matrix when available
 
   // ── Labor/Equipment ──
   const laborEquipment = lookupMatrix(
@@ -186,7 +188,7 @@ export function calculateWidespanPrice(
     basePrice, roofStyle: 0, legs, sides, ends,
     walkInDoors, windows, rollUpDoorsEnds, rollUpDoorsSides,
     insulation, snowEngineering, diagonalBracing,
-    anchors: 0, wainscot, plans,
+    anchors: 0, wainscot, plans, calculations,
     subtotal, laborEquipment,
     taxRate: config.taxRate, taxAmount, total,
   };
