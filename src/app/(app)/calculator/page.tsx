@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalculatorForm } from "@/components/features/calculator/calculator-form";
 import type { PricingMatrices, SpreadsheetType } from "@/types/pricing";
+import type { AppConfig } from "@/lib/pricing/constants";
 
 interface Region {
   id: string;
@@ -25,6 +26,17 @@ export default function CalculatorPage() {
   const [loadingMatrices, setLoadingMatrices] = useState(false);
   const [matricesError, setMatricesError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [appConfig, setAppConfig] = useState<AppConfig>({});
+
+  // Fetch app config once on mount
+  useEffect(() => {
+    fetch("/api/admin/config")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && typeof data === "object" && !data.error) setAppConfig(data);
+      })
+      .catch(() => {});
+  }, []);
 
   // Fetch regions when type changes
   useEffect(() => {
@@ -193,6 +205,7 @@ export default function CalculatorPage() {
               matrices={matrices}
               regionId={selectedRegion}
               regionStates={regions.find((r) => r.id === selectedRegion)?.states || []}
+              appConfig={appConfig}
             />
           )}
         </div>

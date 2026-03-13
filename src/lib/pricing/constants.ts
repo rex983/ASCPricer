@@ -1,3 +1,16 @@
+// App config type (values fetched from asc_app_config)
+export type AppConfig = Record<string, unknown>;
+
+// Default disclaimers shown below pricing
+export const DEFAULT_DISCLAIMERS = [
+  "* IF THERE IS A PRICE DISCREPANCY OVER $20, AMERICAN STEEL CARPORTS INC. RESERVES THE RIGHT TO CANCEL THE ORDER.",
+  "** Plans & Calculations Cost May Vary and are not Final.",
+  "*** Agg Units need to be priced separately.",
+  "Due to Snow Concerns in Northern Areas, it is Highly Recommended to go A-Frame Vertical for Roof Style.",
+  "FOR ANY SNOW / WIND LOADS HIGHER THAN THE LISTED OPTIONS, PLEASE CONTACT THE ENGINEERING DEPARTMENT.",
+  "QUOTE EXCLUDES ANY AND ALL ITEMS NOT SPECIFIED.",
+] as const;
+
 // Standard building width buckets (12-30, even increments)
 export const STANDARD_WIDTHS = [12, 18, 20, 22, 24, 26, 28, 30] as const;
 

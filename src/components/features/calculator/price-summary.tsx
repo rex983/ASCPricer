@@ -3,10 +3,12 @@
 import type { PriceBreakdown } from "@/types/pricing";
 import { formatCurrency } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
+import { DEFAULT_DISCLAIMERS } from "@/lib/pricing/constants";
 
 interface PriceSummaryProps {
   breakdown: PriceBreakdown | null;
   isWidespan: boolean;
+  disclaimers?: string[];
 }
 
 function LineItem({ label, value }: { label: string; value: number }) {
@@ -19,7 +21,8 @@ function LineItem({ label, value }: { label: string; value: number }) {
   );
 }
 
-export function PriceSummary({ breakdown, isWidespan }: PriceSummaryProps) {
+export function PriceSummary({ breakdown, isWidespan, disclaimers: disclaimersProp }: PriceSummaryProps) {
+  const disclaimers = disclaimersProp ?? DEFAULT_DISCLAIMERS;
   if (!breakdown) {
     return (
       <div className="rounded-lg border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
@@ -103,24 +106,16 @@ export function PriceSummary({ breakdown, isWidespan }: PriceSummaryProps) {
 
       {/* Disclaimers */}
       <div className="space-y-2 pt-2">
-        <p className="text-[10px] text-muted-foreground leading-tight">
-          * IF THERE IS A PRICE DISCREPANCY OVER $20, AMERICAN STEEL CARPORTS INC. RESERVES THE RIGHT TO CANCEL THE ORDER.
-        </p>
-        <p className="text-[10px] text-muted-foreground leading-tight">
-          ** Plans &amp; Calculations Cost May Vary and are not Final.
-        </p>
-        <p className="text-[10px] text-muted-foreground leading-tight">
-          *** Agg Units need to be priced separately.
-        </p>
-        <p className="text-[10px] text-amber-500 leading-tight">
-          Due to Snow Concerns in Northern Areas, it is Highly Recommended to go A-Frame Vertical for Roof Style.
-        </p>
-        <p className="text-[10px] text-destructive font-medium leading-tight">
-          FOR ANY SNOW / WIND LOADS HIGHER THAN THE LISTED OPTIONS, PLEASE CONTACT THE ENGINEERING DEPARTMENT.
-        </p>
-        <p className="text-[10px] font-semibold leading-tight">
-          QUOTE EXCLUDES ANY AND ALL ITEMS NOT SPECIFIED.
-        </p>
+        {disclaimers.map((text, i) => {
+          const isSnowWarning = text.toLowerCase().includes("snow concerns");
+          const isEngineeringWarning = text.toLowerCase().includes("contact the engineering");
+          const isExcludes = text.toLowerCase().includes("quote excludes");
+          let className = "text-[10px] text-muted-foreground leading-tight";
+          if (isSnowWarning) className = "text-[10px] text-amber-500 leading-tight";
+          else if (isEngineeringWarning) className = "text-[10px] text-destructive font-medium leading-tight";
+          else if (isExcludes) className = "text-[10px] font-semibold leading-tight";
+          return <p key={i} className={className}>{text}</p>;
+        })}
       </div>
     </div>
   );

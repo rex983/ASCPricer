@@ -14,7 +14,6 @@ import {
 import {
   STANDARD_BRACE_BASE_PRICE,
   STANDARD_BRACE_TALL_SURCHARGE,
-  PLANS_SNOW_SURCHARGE,
 } from "./constants";
 
 /**
@@ -225,9 +224,9 @@ export function calculateStandardPrice(
       config.rollUpSideQty1 + config.rollUpSideQty2;
     const doorOpeningCost = lookupValue(matrices.plansDoorOpeningCost, String(totalDoorOpenings));
 
-    // Snow load surcharge (based on snow load selection)
+    // Snow load surcharge (based on snow load selection) — from parsed spreadsheet data
     const snowSurcharge = config.snowLoad
-      ? (PLANS_SNOW_SURCHARGE[config.snowLoad] ?? 0)
+      ? (matrices.plansSnowSurcharge[config.snowLoad] ?? 0)
       : 0;
 
     plans = basePlans + legSurcharge + doorOpeningCost + snowSurcharge;

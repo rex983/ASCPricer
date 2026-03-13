@@ -20,22 +20,29 @@ import {
   WIDESPAN_MAX_HEIGHT,
   STANDARD_SNOW_LOAD_OPTIONS,
   WIDESPAN_SNOW_LOAD_OPTIONS,
+  DEFAULT_DISCLAIMERS,
 } from "@/lib/pricing/constants";
+import type { AppConfig } from "@/lib/pricing/constants";
 
 interface CalculatorFormProps {
   spreadsheetType: SpreadsheetType;
   matrices: PricingMatrices | null;
   regionId: string;
   regionStates?: string[];
+  appConfig?: AppConfig;
 }
 
-const STANDARD_ROOF_OPTIONS = [
+type VLItem = { value: string; label: string };
+
+// ── Fallback defaults (used when config not loaded) ──
+
+const DEFAULT_ROOF_OPTIONS: VLItem[] = [
   { value: "standard", label: "Standard (Regular)" },
   { value: "a_frame_horizontal", label: "A-Frame Horizontal" },
   { value: "a_frame_vertical", label: "A-Frame Vertical" },
 ];
 
-const SIDE_COVERAGE_OPTIONS = [
+const DEFAULT_SIDE_COVERAGE: VLItem[] = [
   { value: "open", label: "Open" },
   { value: "3", label: "3' Sides Down" },
   { value: "4", label: "4' Sides Down" },
@@ -48,30 +55,81 @@ const SIDE_COVERAGE_OPTIONS = [
   { value: "fully_enclosed", label: "Fully Enclosed" },
 ];
 
-const END_TYPE_OPTIONS = [
+const DEFAULT_END_TYPES: VLItem[] = [
   { value: "enclosed", label: "Fully Enclosed" },
   { value: "gable", label: "Gable" },
   { value: "extended_gable", label: "Extended Gable" },
 ];
 
-const INSULATION_OPTIONS = [
+const DEFAULT_INSULATION_TYPES: VLItem[] = [
   { value: "none", label: "None" },
   { value: "fiberglass", label: "Fiberglass" },
   { value: "thermal", label: "Thermal" },
 ];
 
-const SHEET_METAL_OPTIONS = [
-  { value: "29g_agg", label: "29G Agg Panel" },
-  { value: "26g_agg", label: "26G Agg Panel" },
-  { value: "26g_pbr", label: "26G PBR Panel" },
+const DEFAULT_INSULATION_SCOPES: VLItem[] = [
+  { value: "none", label: "None" },
+  { value: "roof_only", label: "Roof Only" },
+  { value: "fully_insulated", label: "Fully Insulated" },
 ];
 
-const WAINSCOT_OPTIONS = [
+const DEFAULT_WAINSCOT: VLItem[] = [
   { value: "none", label: "None" },
   { value: "full", label: "Full (Sides + Ends)" },
   { value: "sides", label: "Sides Only" },
   { value: "ends", label: "Ends Only" },
 ];
+
+const DEFAULT_SHEET_METAL: VLItem[] = [
+  { value: "29g_agg", label: "29G Agg Panel" },
+  { value: "26g_agg", label: "26G Agg Panel" },
+  { value: "26g_pbr", label: "26G PBR Panel" },
+];
+
+const DEFAULT_GAUGE: VLItem[] = [
+  { value: "14", label: "14 Gauge" },
+  { value: "12", label: "12 Gauge" },
+];
+
+const DEFAULT_ORIENTATION: VLItem[] = [
+  { value: "horizontal", label: "Horizontal" },
+  { value: "vertical", label: "Vertical" },
+];
+
+// ── Config helpers ──
+
+function getVLArray(cfg: AppConfig | undefined, key: string, fallback: VLItem[]): VLItem[] {
+  const val = cfg?.[key];
+  if (Array.isArray(val) && val.length > 0 && typeof val[0] === "object" && "value" in val[0]) {
+    return val as VLItem[];
+  }
+  return fallback;
+}
+
+function getNumberArray(cfg: AppConfig | undefined, key: string, fallback: readonly number[]): number[] {
+  const val = cfg?.[key];
+  if (Array.isArray(val) && val.length > 0 && typeof val[0] === "number") {
+    return val as number[];
+  }
+  return [...fallback];
+}
+
+function getHeightRange(cfg: AppConfig | undefined, key: string, defMin: number, defMax: number): { min: number; max: number } {
+  const val = cfg?.[key];
+  if (val && typeof val === "object" && "min" in (val as Record<string, unknown>)) {
+    const r = val as { min: number; max: number };
+    return { min: r.min ?? defMin, max: r.max ?? defMax };
+  }
+  return { min: defMin, max: defMax };
+}
+
+function getStringArray(cfg: AppConfig | undefined, key: string, fallback: string[]): string[] {
+  const val = cfg?.[key];
+  if (Array.isArray(val) && val.length > 0 && typeof val[0] === "string") {
+    return val as string[];
+  }
+  return fallback;
+}
 
 function getDefaultConfig(type: SpreadsheetType): BuildingConfig {
   const isWidespan = type === "widespan";
@@ -140,15 +198,38 @@ function getAccessoryOptions(matrices: PricingMatrices | null) {
   return { doors, windows, rollUpEnds, rollUpSides };
 }
 
-export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStates = [] }: CalculatorFormProps) {
+export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStates = [], appConfig }: CalculatorFormProps) {
   const isWidespan = spreadsheetType === "widespan";
   const router = useRouter();
   const [config, setConfig] = useState<BuildingConfig>(() => getDefaultConfig(spreadsheetType));
   const [saving, setSaving] = useState(false);
   const breakdown = usePricingEngine(config, matrices);
-  const widths = isWidespan ? WIDESPAN_WIDTHS : STANDARD_WIDTHS;
-  const minHeight = isWidespan ? WIDESPAN_MIN_HEIGHT : STANDARD_MIN_HEIGHT;
-  const maxHeight = isWidespan ? WIDESPAN_MAX_HEIGHT : STANDARD_MAX_HEIGHT;
+
+  // Config-driven options (fall back to hardcoded defaults), memoized on appConfig
+  const {
+    widths, minHeight, maxHeight, roofOptions, sideCoverageOptions,
+    endTypeOptions, insulationTypes, insulationScopes, wainscotOptions,
+    gaugeOptions, orientationOptions, snowLoadOptions, sheetMetalOptions,
+    disclaimers,
+  } = useMemo(() => {
+    const hr = getHeightRange(appConfig, isWidespan ? "height_range_widespan" : "height_range_standard", isWidespan ? WIDESPAN_MIN_HEIGHT : STANDARD_MIN_HEIGHT, isWidespan ? WIDESPAN_MAX_HEIGHT : STANDARD_MAX_HEIGHT);
+    return {
+      widths: getNumberArray(appConfig, isWidespan ? "widespan_widths" : "standard_widths", isWidespan ? WIDESPAN_WIDTHS : STANDARD_WIDTHS),
+      minHeight: hr.min,
+      maxHeight: hr.max,
+      gaugeOptions: getVLArray(appConfig, "gauge_options", DEFAULT_GAUGE),
+      roofOptions: getVLArray(appConfig, "roof_styles", DEFAULT_ROOF_OPTIONS),
+      sideCoverageOptions: getVLArray(appConfig, "side_coverage_options", DEFAULT_SIDE_COVERAGE),
+      endTypeOptions: getVLArray(appConfig, "end_types", DEFAULT_END_TYPES),
+      orientationOptions: getVLArray(appConfig, "orientation_options", DEFAULT_ORIENTATION),
+      insulationTypes: getVLArray(appConfig, "insulation_types", DEFAULT_INSULATION_TYPES),
+      insulationScopes: getVLArray(appConfig, "insulation_scopes", DEFAULT_INSULATION_SCOPES),
+      wainscotOptions: getVLArray(appConfig, "wainscot_options", DEFAULT_WAINSCOT),
+      snowLoadOptions: getVLArray(appConfig, isWidespan ? "widespan_snow_load_options" : "standard_snow_load_options", isWidespan ? [...WIDESPAN_SNOW_LOAD_OPTIONS] : [...STANDARD_SNOW_LOAD_OPTIONS]),
+      sheetMetalOptions: getVLArray(appConfig, "sheet_metal_options", DEFAULT_SHEET_METAL),
+      disclaimers: getStringArray(appConfig, "disclaimers", [...DEFAULT_DISCLAIMERS]),
+    };
+  }, [appConfig, isWidespan]);
   const { doors, windows, rollUpEnds, rollUpSides } = useMemo(() => getAccessoryOptions(matrices), [matrices]);
 
   // Reset config when spreadsheet type changes
@@ -256,8 +337,9 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="14">14 Gauge</SelectItem>
-                  <SelectItem value="12">12 Gauge</SelectItem>
+                  {gaugeOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -281,7 +363,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {STANDARD_ROOF_OPTIONS.map((opt) => (
+                    {roofOptions.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                     ))}
                   </SelectContent>
@@ -298,7 +380,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {SHEET_METAL_OPTIONS.map((opt) => (
+                    {sheetMetalOptions.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                     ))}
                   </SelectContent>
@@ -322,7 +404,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {SIDE_COVERAGE_OPTIONS.map((opt) => (
+                  {sideCoverageOptions.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                   ))}
                 </SelectContent>
@@ -354,8 +436,9 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                     >
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="horizontal">Horizontal</SelectItem>
-                        <SelectItem value="vertical">Vertical</SelectItem>
+                        {orientationOptions.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -399,7 +482,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {END_TYPE_OPTIONS.filter(
+                      {endTypeOptions.filter(
                         (opt) => isWidespan ? opt.value !== "extended_gable" : true
                       ).map((opt) => (
                         <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
@@ -417,8 +500,9 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                     >
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="horizontal">Horizontal</SelectItem>
-                        <SelectItem value="vertical">Vertical</SelectItem>
+                        {orientationOptions.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -646,7 +730,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {INSULATION_OPTIONS.map((opt) => (
+                    {insulationTypes.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                     ))}
                   </SelectContent>
@@ -667,9 +751,18 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                     >
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        <SelectItem value="roof_only" disabled={!isAFV}>Roof Only</SelectItem>
-                        <SelectItem value="fully_insulated" disabled={!allVertical}>Fully Insulated</SelectItem>
+                        {insulationScopes.map((opt) => (
+                          <SelectItem
+                            key={opt.value}
+                            value={opt.value}
+                            disabled={
+                              (opt.value === "roof_only" && !isAFV) ||
+                              (opt.value === "fully_insulated" && !allVertical)
+                            }
+                          >
+                            {opt.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     {!allVertical && config.insulationScope !== "none" && (
@@ -692,7 +785,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {WAINSCOT_OPTIONS.map((opt) => (
+                      {wainscotOptions.map((opt) => (
                         <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                       ))}
                     </SelectContent>
@@ -719,13 +812,11 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                   <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">None</SelectItem>
-                    {(isWidespan ? WIDESPAN_SNOW_LOAD_OPTIONS : STANDARD_SNOW_LOAD_OPTIONS).map(
-                      (opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      )
-                    )}
+                    {snowLoadOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -790,7 +881,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
       <div className="lg:sticky lg:top-6 lg:self-start space-y-3">
         <Card>
           <CardContent className="pt-6">
-            <PriceSummary breakdown={breakdown} isWidespan={isWidespan} />
+            <PriceSummary breakdown={breakdown} isWidespan={isWidespan} disclaimers={disclaimers} />
             {breakdown && (
               <Button
                 className="mt-4 w-full"

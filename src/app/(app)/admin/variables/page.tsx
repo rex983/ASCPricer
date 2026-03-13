@@ -40,6 +40,7 @@ const SECTIONS: {
       "side_coverage_options",
       "end_types",
       "orientation_options",
+      "sheet_metal_options",
     ],
   },
   {
@@ -48,7 +49,12 @@ const SECTIONS: {
   },
   {
     title: "Engineering",
-    keys: ["plans_snow_surcharges", "brace_prices"],
+    keys: [
+      "standard_snow_load_options",
+      "widespan_snow_load_options",
+      "plans_snow_surcharges",
+      "brace_prices",
+    ],
   },
   {
     title: "Disclaimers",
@@ -66,9 +72,12 @@ const FRIENDLY_LABELS: Record<string, string> = {
   side_coverage_options: "Side Coverage Options",
   end_types: "End Types",
   orientation_options: "Orientation Options",
+  sheet_metal_options: "Sheet Metal Options (Widespan)",
   insulation_types: "Insulation Types",
   insulation_scopes: "Insulation Scopes",
   wainscot_options: "Wainscot Options",
+  standard_snow_load_options: "Snow Load Options (Standard)",
+  widespan_snow_load_options: "Snow Load Options (Widespan)",
   plans_snow_surcharges: "Plans / Snow Surcharges",
   brace_prices: "Brace Prices",
   disclaimers: "Disclaimers",

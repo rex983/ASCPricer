@@ -1,0 +1,6 @@
+-- Add snow load options and sheet metal options to app config
+INSERT INTO asc_app_config (key, value) VALUES
+  ('standard_snow_load_options', '[{"value": "20LL", "label": "20 Roof Load"}, {"value": "27LL", "label": "27LL"}, {"value": "34LL", "label": "34LL"}, {"value": "41LL", "label": "41LL"}, {"value": "47LL", "label": "47LL"}, {"value": "54LL", "label": "54LL"}, {"value": "61LL", "label": "61LL"}, {"value": "30GL", "label": "30 Ground Load"}, {"value": "40GL", "label": "40 Ground Load"}, {"value": "50GL", "label": "50 Ground Load"}, {"value": "60GL", "label": "60 Ground Load"}, {"value": "70GL", "label": "70 Ground Load"}, {"value": "80GL", "label": "80 Ground Load"}, {"value": "90GL", "label": "90 Ground Load"}]'),
+  ('widespan_snow_load_options', '[{"value": "20LL", "label": "20 Roof Load"}, {"value": "27LL", "label": "27 Roof Load"}, {"value": "34LL", "label": "34 Roof Load"}, {"value": "50LL", "label": "50 Roof Load"}, {"value": "30GL", "label": "30 Ground Load"}, {"value": "40GL", "label": "40 Ground Load"}, {"value": "50GL", "label": "50 Ground Load"}, {"value": "75GL", "label": "75 Ground Load"}]'),
+  ('sheet_metal_options', '[{"value": "29g_agg", "label": "29G Agg Panel"}, {"value": "26g_agg", "label": "26G Agg Panel"}, {"value": "26g_pbr", "label": "26G PBR Panel"}]')
+ON CONFLICT (key) DO NOTHING;
