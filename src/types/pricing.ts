@@ -38,10 +38,14 @@ export interface BuildingConfig {
   walkInDoorQty: number;
   windowType?: string;
   windowQty: number;
-  rollUpEndSize?: string;
-  rollUpEndQty: number;
-  rollUpSideSize?: string;
-  rollUpSideQty: number;
+  rollUpEndSize1?: string;
+  rollUpEndQty1: number;
+  rollUpEndSize2?: string;
+  rollUpEndQty2: number;
+  rollUpSideSize1?: string;
+  rollUpSideQty1: number;
+  rollUpSideSize2?: string;
+  rollUpSideQty2: number;
 
   // Insulation
   insulationType: InsulationType;
@@ -114,9 +118,8 @@ export interface StandardMatrices {
   accessories: {
     walkInDoors: PricingLookup;
     windows: PricingLookup;
-    rollUpDoors: PricingLookup;
-    rollUpSideHeader: number; // $260
-    rollUpLargeSize: number; // $490 for 10'+
+    rollUpEnds: PricingLookup; // size → ends price (col P-Q)
+    rollUpSides: PricingLookup; // size → sides price (col S-T)
   };
   insulation: {
     fiberglassRate: number; // 2.25

@@ -1,0 +1,54 @@
+=== SHEET: Pricing - Changers ===
+  Range: A1:CX1000 (rows 0-999, cols 0-101)
+  Row 0: B=0 | C=1 | D=2 | E=3 | F=4 | G=5 | H=6 | I=7 | J=8 | K=9 | L=10 | M=11 | N=12 | O=13 | P=14 | Q=15 | R=16 | S=17 | T=18 | U=19 | V=20 | W=21 | X=22 | Y=23 | Z=24 | AA=25 | AB=26 | AC=27 | AD=28 | AE=29 | AF=30
+  Row 1: A=Width | B=0 | C=12 | D=12 | E=12 | F=12 | G=12 | H=12 | I=12 | J=12 | K=12 | L=12 | M=12 | N=12 | O=18 | P=18 | Q=18 | R=18 | S=18 | T=18 | U=20 | V=20 | W=22 | X=22 | Y=24 | Z=24 | AA=26 | AB=26 | AC=28 | AD=28 | AE=30 | AF=30
+  Row 2: D=Width
+  Row 3: D=24
+  Row 4: D=25 | F=1
+  Row 5: E=24
+  Row 9: B=0 | C=1 | D=2 | E=3 | F=4 | G=5 | H=6 | I=7 | J=8 | K=9 | L=10 | M=11 | N=12 | O=13 | P=14 | Q=15 | R=16 | S=17 | T=18 | U=19 | V=20 | W=21 | X=22 | Y=23 | Z=24 | AA=25 | AB=26 | AC=27 | AD=28 | AE=29 | AF=30 | AG=31 | AH=32 | AI=33 | AJ=34 | AK=35 | AL=36 | AM=37 | AN=38 | AO=39 | AP=40 | AQ=41 | AR=42 | AS=43 | AT=44 | AU=45 | AV=46 | AW=47 | AX=48 | AY=49 | AZ=50 | BA=51 | BB=52 | BC=53 | BD=54 | BE=55 | BF=56 | BG=57 | BH=58 | BI=59 | BJ=60 | BK=61 | BL=62 | BM=63 | BN=64 | BO=65 | BP=66 | BQ=67 | BR=68 | BS=69 | BT=70 | BU=71 | BV=72 | BW=73 | BX=74 | BY=75 | BZ=76 | CA=77 | CB=78 | CC=79 | CD=80 | CE=81 | CF=82 | CG=83 | CH=84 | CI=85 | CJ=86 | CK=87 | CL=88 | CM=89 | CN=90 | CO=91 | CP=92 | CQ=93 | CR=94 | CS=95 | CT=96 | CU=97 | CV=98 | CW=99 | CX=100
+  Row 10: A=Length | B=0 | C=20 | D=20 | E=20 | F=20 | G=20 | H=20 | I=20 | J=20 | K=20 | L=20 | M=20 | N=20 | O=20 | P=20 | Q=20 | R=20 | S=20 | T=20 | U=20 | V=20 | W=25 | X=25 | Y=25 | Z=25 | AA=25 | AB=30 | AC=30 | AD=30 | AE=30 | AF=30 | AG=35 | AH=35 | AI=35 | AJ=35 | AK=35 | AL=40 | AM=40 | AN=40 | AO=40 | AP=40 | AQ=45 | AR=45 | AS=45 | AT=45 | AU=45 | AV=50 | AW=50 | AX=50 | AY=50 | AZ=50 | BA=55 | BB=55 | BC=55 | BD=55 | BE=55 | BF=60 | BG=60 | BH=60 | BI=60 | BJ=60 | BK=65 | BL=65 | BM=65 | BN=65 | BO=65 | BP=70 | BQ=70 | BR=70 | BS=70 | BT=70 | BU=75 | BV=75 | BW=75 | BX=75 | BY=75 | BZ=80 | CA=80 | CB=80 | CC=80 | CD=80 | CE=85 | CF=85 | CG=85 | CH=85 | CI=85 | CJ=90 | CK=90 | CL=90 | CM=90 | CN=90 | CO=95 | CP=95 | CQ=95 | CR=95 | CS=95 | CT=100 | CU=100 | CV=100 | CW=100 | CX=100
+  Row 11: D=Length
+  Row 12: D=50
+  Row 13: D=51
+  Row 14: D=Length | E=50
+  Row 18: B=12G | C=12g | D=12 | E=14G | F=14g | G=14 | H=0
+  Row 19: A=Gauge | B=12G | C=12G | D=12G | E=14G | F=14G | G=14G | H=14G
+  Row 21: C=14
+  Row 22: C=6 | E=14G
+  Row 26: A=Roof Style | B=A-Frame Vertical | C=A-Frame Horizontal | D=Standard | E=0
+  Row 27: B=AFV | C=STD | D=STD | E=STD
+  Row 29: B=A-Frame Vertical
+  Row 30: B=1
+  Row 31: B=AFV
+  Row 35: A=Sides Price Only | B=0 | C=1 | D=2 | E=3 | F=4 | G=5 | H=6 | I=7 | J=8 | K=9 | L=10 | M=11 | N=12 | O=13 | P=14 | Q=15 | R=16 | S=17 | T=18 | U=19 | V=20
+  Row 36: B=0 | C=3 | D=3 | E=3 | F=6 | G=6 | H=6 | I=7 | J=8 | K=9 | L=10 | M=11 | N=12 | O=13 | P=14 | Q=15 | R=16 | S=17 | T=18 | U=19 | V=20
+  Row 38: B=12 | C=Leg Height
+  Row 39: B=13
+  Row 40: B=12 | C=Changed Legs
+  Row 44: A=Leg Price Only | B=0 | C=1 | D=2 | E=3 | F=4 | G=5 | H=6 | I=7 | J=8 | K=9 | L=10 | M=11 | N=12 | O=13 | P=14 | Q=15 | R=16 | S=17 | T=18 | U=19 | V=20
+  Row 45: B=0 | C=6 | D=6 | E=6 | F=6 | G=6 | H=6 | I=7 | J=8 | K=9 | L=10 | M=11 | N=12 | O=13 | P=14 | Q=15 | R=16 | S=17 | T=18 | U=19 | V=20
+  Row 47: B=12 | C=Leg Height
+  Row 48: B=13
+  Row 49: B=12 | C=Changed Legs
+  Row 53: B=Horizontal | C=Vertical | D=0
+  Row 54: B=HZ | C=V | D=HZ
+  Row 55: B=Sides | C=Ends
+  Row 56: B=Horizontal | C=Horizontal
+  Row 57: B=1 | C=1
+  Row 58: B=HZ | C=HZ
+  Row 62: A=Building Type | B=Sides | C=Ends | D=Sides QTY | E=Ends QTY | T=Value | U=Yes or No
+  Row 63: B=Fully Enclosed | C=Enclosed Ends | D=2 | E=2 | H=Is the Building Irregualr | S=Sides  | T=Horizontal | U=0
+  Row 64: G=Sides Quantity | H=2 | J=Irregular | K=0 | L=1 | M=2 | N=3 | O=4 | S=Ends | T=Horizontal | U=0
+  Row 65: A=Sides | B=1 | D=E | E=Building Type | G=Ends Quantity | H=2 | K=0 | L=1 | M=1 | N=1 | O=0
+  Row 66: A=Ends | B=1 | D=from 4 to 2 | G=Total | H=4 | U=0
+  Row 67: A=Sides Quantity | B=1 | K=5 | T=Vertical Sides | U=0
+  Row 68: A=Ends Quantity | B=1 | H=1 | I=IF | J=0 | K=0 | L=Sides = 4 | T=Yes or No | U=No
+  Row 69: A=Total | B=4 | H=2 | I=IF | J=0 | K=E | L=E or O
+  Row 70: H=3 | I=IF | J=1 | K=4 | L=Total
+  Row 71: H=4 | I=Multiply | J=0 | K=Combine 2 & 3
+  Row 72: J=z
+  Row 73: J=0
+  Row 74: I=Irregular | J=0
+  Row 76: A=4790
+

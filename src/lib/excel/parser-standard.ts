@@ -73,7 +73,7 @@ export function parseStandardWorkbook(workbook: WorkBook): StandardMatrices {
   const { walkInDoors, windows } = readAccessories(
     getSheet(workbook, "Pricing - Accessories")
   );
-  const rollUpDoors = readStandardRollUpDoors(
+  const { rollUpEnds, rollUpSides } = readStandardRollUpDoors(
     getSheet(workbook, "Pricing - Accessories")
   );
 
@@ -160,9 +160,8 @@ export function parseStandardWorkbook(workbook: WorkBook): StandardMatrices {
     accessories: {
       walkInDoors,
       windows,
-      rollUpDoors,
-      rollUpSideHeader: 260,
-      rollUpLargeSize: 490,
+      rollUpEnds,
+      rollUpSides,
     },
     insulation: {
       fiberglassRate: 2.25,

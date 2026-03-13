@@ -57,29 +57,43 @@ export function readAccessories(ws: WorkSheet): {
 }
 
 /**
- * Parse standard roll-up door pricing.
- * Standard spreadsheet doesn't have a separate roll-up sheet,
- * so roll-ups may be in the Accessories sheet or Quote Sheet.
- * Returns empty lookup if not found - will be populated from widespan pattern.
+ * Parse standard roll-up door pricing from "Pricing - Accessories" sheet.
+ *
+ * Layout: Two separate price columns for roll-ups:
+ *   Col P-Q (15-16): size → ENDS price (e.g., 8x8 = $795)
+ *   Col S-T (18-19): size → SIDES price (e.g., 8x8 = $1,055)
+ *
+ * Returns { rollUpEnds, rollUpSides }
  */
-export function readStandardRollUpDoors(ws: WorkSheet): PricingLookup {
+export function readStandardRollUpDoors(ws: WorkSheet): {
+  rollUpEnds: PricingLookup;
+  rollUpSides: PricingLookup;
+} {
   const data = sheetToArray(ws);
-  const rollUps: PricingLookup = {};
+  const rollUpEnds: PricingLookup = {};
+  const rollUpSides: PricingLookup = {};
 
-  // Scan for roll-up door entries
-  for (let r = 0; r < data.length; r++) {
+  // Ends prices: col P (15) = size, col Q (16) = price
+  for (let r = 0; r < Math.min(25, data.length); r++) {
     const row = data[r];
     if (!row) continue;
-    for (let c = 0; c < row.length - 1; c++) {
-      const name = cleanHeader(row[c]);
-      if (name && (name.toLowerCase().includes("roll") || name.match(/^\d+x\d+$/))) {
-        const price = num(row[c + 1]);
-        if (price > 0) {
-          rollUps[name] = price;
-        }
-      }
+    const size = cleanHeader(row[15]);
+    const price = num(row[16]);
+    if (size && size.match(/^\d+x\d+$/) && price > 0) {
+      rollUpEnds[size] = price;
     }
   }
 
-  return rollUps;
+  // Sides prices: col S (18) = size, col T (19) = price
+  for (let r = 0; r < Math.min(25, data.length); r++) {
+    const row = data[r];
+    if (!row) continue;
+    const size = cleanHeader(row[18]);
+    const price = num(row[19]);
+    if (size && size.match(/^\d+x\d+$/) && price > 0) {
+      rollUpSides[size] = price;
+    }
+  }
+
+  return { rollUpEnds, rollUpSides };
 }

@@ -92,21 +92,29 @@ export function calculateWidespanPrice(
 
   // ── Roll-Up Doors ──
   let rollUpDoorsEnds = 0;
-  if (config.rollUpEndSize && config.rollUpEndQty > 0) {
-    rollUpDoorsEnds =
-      lookupValue(matrices.accessories.rollUpDoors, config.rollUpEndSize) *
-      config.rollUpEndQty;
+  if (config.rollUpEndSize1 && config.rollUpEndQty1 > 0) {
+    rollUpDoorsEnds +=
+      lookupValue(matrices.accessories.rollUpDoors, config.rollUpEndSize1) *
+      config.rollUpEndQty1;
+  }
+  if (config.rollUpEndSize2 && config.rollUpEndQty2 > 0) {
+    rollUpDoorsEnds +=
+      lookupValue(matrices.accessories.rollUpDoors, config.rollUpEndSize2) *
+      config.rollUpEndQty2;
   }
 
   let rollUpDoorsSides = 0;
-  if (config.rollUpSideSize && config.rollUpSideQty > 0) {
-    const baseRollUp = lookupValue(
-      matrices.accessories.rollUpDoors,
-      config.rollUpSideSize
-    );
-    rollUpDoorsSides =
-      (baseRollUp + matrices.accessories.rollUpSideHeader) *
-      config.rollUpSideQty;
+  if (config.rollUpSideSize1 && config.rollUpSideQty1 > 0) {
+    rollUpDoorsSides +=
+      (lookupValue(matrices.accessories.rollUpDoors, config.rollUpSideSize1) +
+        matrices.accessories.rollUpSideHeader) *
+      config.rollUpSideQty1;
+  }
+  if (config.rollUpSideSize2 && config.rollUpSideQty2 > 0) {
+    rollUpDoorsSides +=
+      (lookupValue(matrices.accessories.rollUpDoors, config.rollUpSideSize2) +
+        matrices.accessories.rollUpSideHeader) *
+      config.rollUpSideQty2;
   }
 
   // ── Insulation ──

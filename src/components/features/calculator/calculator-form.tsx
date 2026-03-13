@@ -92,10 +92,14 @@ function getDefaultConfig(type: SpreadsheetType): BuildingConfig {
     walkInDoorQty: 0,
     windowType: undefined,
     windowQty: 0,
-    rollUpEndSize: undefined,
-    rollUpEndQty: 0,
-    rollUpSideSize: undefined,
-    rollUpSideQty: 0,
+    rollUpEndSize1: undefined,
+    rollUpEndQty1: 0,
+    rollUpEndSize2: undefined,
+    rollUpEndQty2: 0,
+    rollUpSideSize1: undefined,
+    rollUpSideQty1: 0,
+    rollUpSideSize2: undefined,
+    rollUpSideQty2: 0,
     insulationType: "none",
     insulationScope: "none",
     wainscot: "none",
@@ -107,17 +111,25 @@ function getDefaultConfig(type: SpreadsheetType): BuildingConfig {
 
 /** Extract door/window option labels from the matrices accessories. */
 function getAccessoryOptions(matrices: PricingMatrices | null) {
-  if (!matrices) return { doors: [], windows: [], rollUps: [] };
+  if (!matrices) return { doors: [], windows: [], rollUpEnds: [], rollUpSides: [] };
 
-  const acc = matrices.type === "standard"
-    ? matrices.accessories
-    : matrices.accessories;
-
+  const acc = matrices.accessories;
   const doors = Object.keys(acc.walkInDoors || {});
   const windows = Object.keys(acc.windows || {});
-  const rollUps = Object.keys(acc.rollUpDoors || {});
 
-  return { doors, windows, rollUps };
+  // Standard has separate ends/sides roll-up price columns
+  // Widespan uses a single rollUpDoors lookup
+  let rollUpEnds: string[];
+  let rollUpSides: string[];
+  if (matrices.type === "standard") {
+    rollUpEnds = Object.keys(matrices.accessories.rollUpEnds || {});
+    rollUpSides = Object.keys(matrices.accessories.rollUpSides || {});
+  } else {
+    rollUpEnds = Object.keys(matrices.accessories.rollUpDoors || {});
+    rollUpSides = Object.keys(matrices.accessories.rollUpDoors || {});
+  }
+
+  return { doors, windows, rollUpEnds, rollUpSides };
 }
 
 export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStates = [] }: CalculatorFormProps) {
@@ -129,7 +141,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
   const widths = isWidespan ? WIDESPAN_WIDTHS : STANDARD_WIDTHS;
   const minHeight = isWidespan ? WIDESPAN_MIN_HEIGHT : STANDARD_MIN_HEIGHT;
   const maxHeight = isWidespan ? WIDESPAN_MAX_HEIGHT : STANDARD_MAX_HEIGHT;
-  const { doors, windows, rollUps } = useMemo(() => getAccessoryOptions(matrices), [matrices]);
+  const { doors, windows, rollUpEnds, rollUpSides } = useMemo(() => getAccessoryOptions(matrices), [matrices]);
 
   // Reset config when spreadsheet type changes
   useEffect(() => {
@@ -490,80 +502,114 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
               )}
             </div>
 
-            {/* Roll-Up Doors (Ends) */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Roll-Up Door (End)</Label>
+            {/* Roll-Up Doors (Ends) — 2 slots */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Roll-Up Doors (Ends)</Label>
+              <div className="grid grid-cols-[1fr_80px] gap-2">
                 <Select
-                  value={config.rollUpEndSize || "__none__"}
+                  value={config.rollUpEndSize1 || "__none__"}
                   onValueChange={(v) => {
                     const val = v === "__none__" ? undefined : v;
                     setConfig((prev) => ({
                       ...prev,
-                      rollUpEndSize: val,
-                      rollUpEndQty: val ? Math.max(1, prev.rollUpEndQty) : 0,
+                      rollUpEndSize1: val,
+                      rollUpEndQty1: val ? Math.max(1, prev.rollUpEndQty1) : 0,
                     }));
                   }}
                 >
-                  <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Size" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">None</SelectItem>
-                    {rollUps.map((r) => (
+                    {rollUpEnds.map((r) => (
                       <SelectItem key={r} value={r}>{r}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {config.rollUpEndSize1 ? (
+                  <Input type="number" min={1} max={10} value={config.rollUpEndQty1}
+                    onChange={(e) => update("rollUpEndQty1", Number(e.target.value))} />
+                ) : <div />}
               </div>
-              {config.rollUpEndSize && (
-                <div className="space-y-2">
-                  <Label>Qty</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={10}
-                    value={config.rollUpEndQty}
-                    onChange={(e) => update("rollUpEndQty", Number(e.target.value))}
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Roll-Up Doors (Sides) */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Roll-Up Door (Side)</Label>
+              <div className="grid grid-cols-[1fr_80px] gap-2">
                 <Select
-                  value={config.rollUpSideSize || "__none__"}
+                  value={config.rollUpEndSize2 || "__none__"}
                   onValueChange={(v) => {
                     const val = v === "__none__" ? undefined : v;
                     setConfig((prev) => ({
                       ...prev,
-                      rollUpSideSize: val,
-                      rollUpSideQty: val ? Math.max(1, prev.rollUpSideQty) : 0,
+                      rollUpEndSize2: val,
+                      rollUpEndQty2: val ? Math.max(1, prev.rollUpEndQty2) : 0,
                     }));
                   }}
                 >
-                  <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Size" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">None</SelectItem>
-                    {rollUps.map((r) => (
-                      <SelectItem key={`side-${r}`} value={r}>{r}</SelectItem>
+                    {rollUpEnds.map((r) => (
+                      <SelectItem key={`e2-${r}`} value={r}>{r}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {config.rollUpEndSize2 ? (
+                  <Input type="number" min={1} max={10} value={config.rollUpEndQty2}
+                    onChange={(e) => update("rollUpEndQty2", Number(e.target.value))} />
+                ) : <div />}
               </div>
-              {config.rollUpSideSize && (
-                <div className="space-y-2">
-                  <Label>Qty</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={10}
-                    value={config.rollUpSideQty}
-                    onChange={(e) => update("rollUpSideQty", Number(e.target.value))}
-                  />
-                </div>
-              )}
+            </div>
+
+            {/* Roll-Up Doors (Sides) — 2 slots */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Roll-Up Doors (Sides)</Label>
+              <div className="grid grid-cols-[1fr_80px] gap-2">
+                <Select
+                  value={config.rollUpSideSize1 || "__none__"}
+                  onValueChange={(v) => {
+                    const val = v === "__none__" ? undefined : v;
+                    setConfig((prev) => ({
+                      ...prev,
+                      rollUpSideSize1: val,
+                      rollUpSideQty1: val ? Math.max(1, prev.rollUpSideQty1) : 0,
+                    }));
+                  }}
+                >
+                  <SelectTrigger><SelectValue placeholder="Size" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {rollUpSides.map((r) => (
+                      <SelectItem key={`s1-${r}`} value={r}>{r}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {config.rollUpSideSize1 ? (
+                  <Input type="number" min={1} max={10} value={config.rollUpSideQty1}
+                    onChange={(e) => update("rollUpSideQty1", Number(e.target.value))} />
+                ) : <div />}
+              </div>
+              <div className="grid grid-cols-[1fr_80px] gap-2">
+                <Select
+                  value={config.rollUpSideSize2 || "__none__"}
+                  onValueChange={(v) => {
+                    const val = v === "__none__" ? undefined : v;
+                    setConfig((prev) => ({
+                      ...prev,
+                      rollUpSideSize2: val,
+                      rollUpSideQty2: val ? Math.max(1, prev.rollUpSideQty2) : 0,
+                    }));
+                  }}
+                >
+                  <SelectTrigger><SelectValue placeholder="Size" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {rollUpSides.map((r) => (
+                      <SelectItem key={`s2-${r}`} value={r}>{r}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {config.rollUpSideSize2 ? (
+                  <Input type="number" min={1} max={10} value={config.rollUpSideQty2}
+                    onChange={(e) => update("rollUpSideQty2", Number(e.target.value))} />
+                ) : <div />}
+              </div>
             </div>
           </CardContent>
         </Card>

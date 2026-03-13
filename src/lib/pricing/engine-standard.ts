@@ -125,22 +125,30 @@ export function calculateStandardPrice(
     : 0;
 
   // ── Roll-Up Doors ──
+  // Ends and sides have separate price columns in the spreadsheet
+  // Each location supports two size/qty slots
   let rollUpDoorsEnds = 0;
-  if (config.rollUpEndSize && config.rollUpEndQty > 0) {
-    rollUpDoorsEnds =
-      lookupValue(matrices.accessories.rollUpDoors, config.rollUpEndSize) *
-      config.rollUpEndQty;
+  if (config.rollUpEndSize1 && config.rollUpEndQty1 > 0) {
+    rollUpDoorsEnds +=
+      lookupValue(matrices.accessories.rollUpEnds, config.rollUpEndSize1) *
+      config.rollUpEndQty1;
+  }
+  if (config.rollUpEndSize2 && config.rollUpEndQty2 > 0) {
+    rollUpDoorsEnds +=
+      lookupValue(matrices.accessories.rollUpEnds, config.rollUpEndSize2) *
+      config.rollUpEndQty2;
   }
 
   let rollUpDoorsSides = 0;
-  if (config.rollUpSideSize && config.rollUpSideQty > 0) {
-    const baseRollUp = lookupValue(
-      matrices.accessories.rollUpDoors,
-      config.rollUpSideSize
-    );
-    rollUpDoorsSides =
-      (baseRollUp + matrices.accessories.rollUpSideHeader) *
-      config.rollUpSideQty;
+  if (config.rollUpSideSize1 && config.rollUpSideQty1 > 0) {
+    rollUpDoorsSides +=
+      lookupValue(matrices.accessories.rollUpSides, config.rollUpSideSize1) *
+      config.rollUpSideQty1;
+  }
+  if (config.rollUpSideSize2 && config.rollUpSideQty2 > 0) {
+    rollUpDoorsSides +=
+      lookupValue(matrices.accessories.rollUpSides, config.rollUpSideSize2) *
+      config.rollUpSideQty2;
   }
 
   // ── Insulation ──
@@ -207,7 +215,9 @@ export function calculateStandardPrice(
     const legSurcharge = lookupValue(matrices.plansLegSurcharge, String(config.height));
 
     // Door opening cost (3+ roll-up doors adds $100-$325)
-    const totalDoorOpenings = config.rollUpEndQty + config.rollUpSideQty;
+    const totalDoorOpenings =
+      config.rollUpEndQty1 + config.rollUpEndQty2 +
+      config.rollUpSideQty1 + config.rollUpSideQty2;
     const doorOpeningCost = lookupValue(matrices.plansDoorOpeningCost, String(totalDoorOpenings));
 
     // Snow load surcharge (based on snow load selection)
