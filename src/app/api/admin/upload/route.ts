@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parseSpreadsheet } from "@/lib/excel/parser";
+import { logAudit } from "@/lib/audit";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function isValidUuid(v: unknown): v is string {
@@ -134,6 +135,22 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Log successful upload to audit trail
+    await logAudit({
+      userId: session.user.profileId,
+      userEmail: session.user.email,
+      action: "upload_spreadsheet",
+      resourceType: "pricing_data",
+      resourceId: pricingData.id,
+      details: {
+        filename: file.name,
+        regionId,
+        spreadsheetType: result.detection.type,
+        version: nextVersion,
+        sheetCount: result.detection.sheetCount,
+      },
+    });
 
     return NextResponse.json({
       success: true,

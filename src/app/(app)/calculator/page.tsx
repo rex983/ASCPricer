@@ -24,6 +24,7 @@ export default function CalculatorPage() {
   const [matrices, setMatrices] = useState<PricingMatrices | null>(null);
   const [loadingMatrices, setLoadingMatrices] = useState(false);
   const [matricesError, setMatricesError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   // Fetch regions when type changes
   useEffect(() => {
@@ -43,6 +44,7 @@ export default function CalculatorPage() {
     if (!selectedRegion) {
       setMatrices(null);
       setMatricesError(null);
+      setLastUpdated(null);
       return;
     }
     setLoadingMatrices(true);
@@ -57,6 +59,7 @@ export default function CalculatorPage() {
       })
       .then((data) => {
         setMatrices(data.matrices as PricingMatrices);
+        setLastUpdated(data.created_at || null);
       })
       .catch((err) => {
         setMatricesError(err.message);
@@ -151,6 +154,20 @@ export default function CalculatorPage() {
                 ))}
               </SelectContent>
             </Select>
+            {lastUpdated && (
+              <span className="text-sm text-muted-foreground">
+                Last Updated{" "}
+                {new Date(lastUpdated).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}{" "}
+                {new Date(lastUpdated).toLocaleTimeString("en-US", {
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
+              </span>
+            )}
           </div>
 
           {/* Calculator content */}

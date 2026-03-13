@@ -10,7 +10,7 @@ export async function GET(
 
   const { data, error } = await supabase
     .from("asc_pricing_data")
-    .select("id, region_id, spreadsheet_type, matrices, version")
+    .select("id, region_id, spreadsheet_type, matrices, version, created_at")
     .eq("region_id", regionId)
     .eq("is_current", true)
     .single();

@@ -97,8 +97,31 @@ export function PriceSummary({ breakdown, isWidespan }: PriceSummaryProps) {
             <span>Additional Total</span>
             <span>{formatCurrency(breakdown.plans + breakdown.calculations)}</span>
           </div>
+          <p className="text-xs text-amber-500 font-medium">Not Included in Balance Due</p>
         </div>
       )}
+
+      {/* Disclaimers */}
+      <div className="space-y-2 pt-2">
+        <p className="text-[10px] text-muted-foreground leading-tight">
+          * IF THERE IS A PRICE DISCREPANCY OVER $20, AMERICAN STEEL CARPORTS INC. RESERVES THE RIGHT TO CANCEL THE ORDER.
+        </p>
+        <p className="text-[10px] text-muted-foreground leading-tight">
+          ** Plans &amp; Calculations Cost May Vary and are not Final.
+        </p>
+        <p className="text-[10px] text-muted-foreground leading-tight">
+          *** Agg Units need to be priced separately.
+        </p>
+        <p className="text-[10px] text-amber-500 leading-tight">
+          Due to Snow Concerns in Northern Areas, it is Highly Recommended to go A-Frame Vertical for Roof Style.
+        </p>
+        <p className="text-[10px] text-destructive font-medium leading-tight">
+          FOR ANY SNOW / WIND LOADS HIGHER THAN THE LISTED OPTIONS, PLEASE CONTACT THE ENGINEERING DEPARTMENT.
+        </p>
+        <p className="text-[10px] font-semibold leading-tight">
+          QUOTE EXCLUDES ANY AND ALL ITEMS NOT SPECIFIED.
+        </p>
+      </div>
     </div>
   );
 }
