@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Calculator, FileText, Upload, Map, Settings, History } from "lucide-react";
+import { Calculator, FileText, Upload, Map, Settings, History, SlidersHorizontal } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -25,6 +25,7 @@ const navItems = [
 const adminItems = [
   { title: "Upload Pricing", href: "/admin/upload", icon: Upload },
   { title: "Regions", href: "/admin/regions", icon: Map },
+  { title: "Variables", href: "/admin/variables", icon: SlidersHorizontal },
   { title: "Audit Log", href: "/admin/audit-log", icon: History },
 ];
 
