@@ -79,6 +79,9 @@ export function PriceSummary({ breakdown, isWidespan }: PriceSummaryProps) {
           <span>Total</span>
           <span>{formatCurrency(breakdown.total)}</span>
         </div>
+        <p className="text-xs text-muted-foreground">
+          Please add 15% for DROP OFF ONLY or 25% for INSTALL.
+        </p>
       </div>
 
       {/* Additional Costs (separate from building price) */}
