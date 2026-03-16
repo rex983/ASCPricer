@@ -54,6 +54,7 @@ export function parseWidespanWorkbook(workbook: WorkBook): WidespanMatrices {
   );
   const {
     rollUpDoors,
+    rollUpDoorsWithHeader,
     headerSmall,
     headerLarge,
   } = readWidespanRollUpDoors(getSheet(workbook, "Roll Up Door"));
@@ -68,7 +69,7 @@ export function parseWidespanWorkbook(workbook: WorkBook): WidespanMatrices {
   const laborEquipment = readWidespanEquipment(
     getSheet(workbook, "Equipment")
   );
-  const plans = readWidespanPlans(getSheet(workbook, "Plans & Calcs"));
+  const { plans, calculations } = readWidespanPlans(getSheet(workbook, "Plans & Calcs"));
 
   // Changers
   const changers = readWidespanChangers(getSheet(workbook, "Changers"));
@@ -137,6 +138,7 @@ export function parseWidespanWorkbook(workbook: WorkBook): WidespanMatrices {
       walkInDoors,
       windows,
       rollUpDoors,
+      rollUpDoorsWithHeader,
       rollUpSideHeader: headerSmall,
       rollUpLargeSize: headerLarge,
       rollUpOver14Surcharge: 0,
@@ -152,6 +154,7 @@ export function parseWidespanWorkbook(workbook: WorkBook): WidespanMatrices {
     anchors: {},
     laborEquipment,
     plans,
+    calculations,
     snow: {
       trussSpacing,
       trussCounts,

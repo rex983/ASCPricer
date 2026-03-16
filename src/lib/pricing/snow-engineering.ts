@@ -512,6 +512,7 @@ export function calculateWidespanSnowEngineering(
   const isEnclosed =
     config.sidesCoverage === "fully_enclosed" && config.endsQty >= 2;
   const enclosure = isEnclosed ? "E" : "O";
+  // Changers sheet: widths 32-40 = "S", 42-60 = "G"
   const buildingType = width >= 42 ? "G" : "S";
 
   // Wind load — mapping #1 for trusses/purlins (105/120/130)

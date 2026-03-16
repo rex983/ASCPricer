@@ -140,6 +140,28 @@ export const WIDESPAN_BRACE_PRICE = 350;
 export const STANDARD_BRACE_BASE_PRICE = 90;
 export const STANDARD_BRACE_TALL_SURCHARGE = 50; // if height > 12
 
+// Widespan plans: leg height surcharge (from Plans & Calcs sheet)
+export const WIDESPAN_PLANS_LEG_SURCHARGE: Record<string, number> = {
+  "8": 0, "9": 0, "10": 0, "11": 0, "12": 0,
+  "13": 150, "14": 200, "15": 225, "16": 300,
+  "17": 350, "18": 425, "19": 500, "20": 575,
+};
+
+// Widespan plans: door opening cost (3+ openings adds surcharge)
+export const WIDESPAN_PLANS_DOOR_OPENING_COST: Record<string, number> = {
+  "0": 0, "1": 0, "2": 0, "3": 100, "4": 125, "5": 150,
+  "6": 175, "7": 200, "8": 225, "9": 250, "10": 275,
+};
+
+// Widespan plans: surcharge per roll-up door over 14' tall
+export const WIDESPAN_PLANS_OVER14_SURCHARGE = 100;
+
+// Widespan anchor cost per piece
+export const WIDESPAN_ANCHOR_PRICES: Record<string, number> = {
+  titen_hd: 15,
+  concrete: 0,
+};
+
 // Plans snow load surcharges (from "Plans for Buildings" E38 formula)
 // 20LL/30GL = no surcharge (base load), higher loads add progressively more
 export const PLANS_SNOW_SURCHARGE: Record<string, number> = {

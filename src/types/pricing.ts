@@ -173,7 +173,8 @@ export interface WidespanMatrices {
   accessories: {
     walkInDoors: PricingLookup;
     windows: PricingLookup;
-    rollUpDoors: PricingLookup;
+    rollUpDoors: PricingLookup; // base price (ends)
+    rollUpDoorsWithHeader: PricingLookup; // price with header (sides)
     rollUpSideHeader: number;
     rollUpLargeSize: number;
     rollUpOver14Surcharge: number;
@@ -189,6 +190,7 @@ export interface WidespanMatrices {
   anchors: PricingLookup; // anchorType → per-anchor cost
   laborEquipment: PricingMatrix; // [widthGroup][lengthGroup] → price
   plans: PricingMatrix; // [widthGroup][length] → price
+  calculations: PricingMatrix; // [widthGroup][length] → calcs price
   snow: {
     trussSpacing: PricingMatrix;
     trussCounts: PricingMatrix;

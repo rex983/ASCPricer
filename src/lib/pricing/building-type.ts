@@ -8,8 +8,8 @@
  *   ET (Extra Tall): height 16-20
  *
  * Widespan buildings (width 32+):
- *   S (Standard): typical configs
- *   G (Giant): width 48+ or very tall
+ *   S (Standard): width 32-40
+ *   G (Giant/Gable): width 42+ (matches Changers sheet)
  */
 export function getStandardBuildingType(
   width: number,
@@ -26,7 +26,7 @@ export function getWidespanBuildingType(
   width: number,
   height: number
 ): "S" | "G" {
-  if (width >= 48 || height >= 16) return "G";
+  if (width >= 42) return "G";
   return "S";
 }
 
