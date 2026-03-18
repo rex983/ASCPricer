@@ -269,34 +269,69 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
 
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const { data: session } = useSession();
+  const [customerMode, setCustomerMode] = useState<"new" | "existing">("new");
   const [customerForm, setCustomerForm] = useState({
     name: "", email: "", phone: "", address: "", city: "", state: "", zip: "", notes: "",
   });
   const setCust = (field: string, value: string) =>
     setCustomerForm((prev) => ({ ...prev, [field]: value }));
 
+  // Existing customer search
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [customerResults, setCustomerResults] = useState<
+    { id: string; name: string; email: string | null; phone: string | null; city: string | null; state: string | null; office: string }[]
+  >([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<typeof customerResults[number] | null>(null);
+  const [searchingCustomers, setSearchingCustomers] = useState(false);
+  const [quoteNotes, setQuoteNotes] = useState("");
+
+  // Debounced customer search
+  useEffect(() => {
+    if (customerMode !== "existing" || customerSearch.length < 2) {
+      setCustomerResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setSearchingCustomers(true);
+      try {
+        const res = await fetch(`/api/customers?search=${encodeURIComponent(customerSearch)}`);
+        const data = await res.json();
+        if (Array.isArray(data)) setCustomerResults(data);
+      } catch { /* ignore */ }
+      setSearchingCustomers(false);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [customerSearch, customerMode]);
+
   const handleSaveQuote = useCallback(async () => {
     if (!breakdown) return;
     setSaving(true);
     try {
+      const payload: Record<string, unknown> = {
+        regionId,
+        config,
+        notes: (customerMode === "new" ? customerForm.notes : quoteNotes) || undefined,
+        office: session?.user?.office || undefined,
+      };
+
+      if (customerMode === "existing" && selectedCustomer) {
+        payload.customerId = selectedCustomer.id;
+      } else if (customerMode === "new") {
+        payload.customer = {
+          name: customerForm.name || undefined,
+          email: customerForm.email || undefined,
+          phone: customerForm.phone || undefined,
+          address: customerForm.address || undefined,
+          city: customerForm.city || undefined,
+          state: customerForm.state || undefined,
+          zip: customerForm.zip || undefined,
+        };
+      }
+
       const res = await fetch("/api/quotes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          regionId,
-          config,
-          customer: {
-            name: customerForm.name || undefined,
-            email: customerForm.email || undefined,
-            phone: customerForm.phone || undefined,
-            address: customerForm.address || undefined,
-            city: customerForm.city || undefined,
-            state: customerForm.state || undefined,
-            zip: customerForm.zip || undefined,
-          },
-          notes: customerForm.notes || undefined,
-          office: session?.user?.office || undefined,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (data.id) {
@@ -304,12 +339,12 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
       } else {
         alert(data.error || "Failed to save quote");
       }
-    } catch (e) {
+    } catch {
       alert("Network error saving quote");
     } finally {
       setSaving(false);
     }
-  }, [breakdown, regionId, config, customerForm, session, router]);
+  }, [breakdown, regionId, config, customerForm, quoteNotes, customerMode, selectedCustomer, session, router]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
@@ -921,83 +956,186 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                 >
                   Save Quote
                 </Button>
-                <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
-                  <DialogContent className="max-w-md">
+                <Dialog open={saveDialogOpen} onOpenChange={(open) => {
+                  setSaveDialogOpen(open);
+                  if (!open) {
+                    setSelectedCustomer(null);
+                    setCustomerSearch("");
+                    setCustomerResults([]);
+                  }
+                }}>
+                  <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Save Quote</DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-3">
-                      <div className="space-y-1">
-                        <Label>Customer Name</Label>
-                        <Input
-                          value={customerForm.name}
-                          onChange={(e) => setCust("name", e.target.value)}
-                          placeholder="John Smith"
-                        />
+                    <div className="space-y-4">
+                      {/* Mode Toggle */}
+                      <div className="flex gap-2">
+                        <Button
+                          variant={customerMode === "new" ? "default" : "outline"}
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => { setCustomerMode("new"); setSelectedCustomer(null); }}
+                        >
+                          New Customer
+                        </Button>
+                        <Button
+                          variant={customerMode === "existing" ? "default" : "outline"}
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => setCustomerMode("existing")}
+                        >
+                          Existing Customer
+                        </Button>
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <Label>Email</Label>
-                          <Input
-                            type="email"
-                            value={customerForm.email}
-                            onChange={(e) => setCust("email", e.target.value)}
-                          />
+
+                      {customerMode === "existing" ? (
+                        <div className="space-y-3">
+                          {/* Search */}
+                          <div className="space-y-1">
+                            <Label>Search Customers</Label>
+                            <Input
+                              value={customerSearch}
+                              onChange={(e) => { setCustomerSearch(e.target.value); setSelectedCustomer(null); }}
+                              placeholder="Type name, email, or phone..."
+                            />
+                          </div>
+
+                          {/* Selected customer card */}
+                          {selectedCustomer && (
+                            <div className="rounded-md border border-primary bg-primary/5 p-3 text-sm space-y-1">
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold">{selectedCustomer.name}</span>
+                                <span className="text-xs text-muted-foreground font-mono">
+                                  {selectedCustomer.id.slice(0, 8)}
+                                </span>
+                              </div>
+                              {selectedCustomer.email && <p className="text-muted-foreground">{selectedCustomer.email}</p>}
+                              {selectedCustomer.phone && <p className="text-muted-foreground">{selectedCustomer.phone}</p>}
+                              {(selectedCustomer.city || selectedCustomer.state) && (
+                                <p className="text-muted-foreground">
+                                  {[selectedCustomer.city, selectedCustomer.state].filter(Boolean).join(", ")}
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Search results */}
+                          {!selectedCustomer && customerSearch.length >= 2 && (
+                            <div className="rounded-md border max-h-48 overflow-y-auto">
+                              {searchingCustomers ? (
+                                <p className="p-3 text-sm text-muted-foreground text-center">Searching...</p>
+                              ) : customerResults.length === 0 ? (
+                                <p className="p-3 text-sm text-muted-foreground text-center">No customers found</p>
+                              ) : (
+                                customerResults.map((c) => (
+                                  <button
+                                    key={c.id}
+                                    type="button"
+                                    className="w-full text-left px-3 py-2 hover:bg-accent border-b last:border-b-0 text-sm"
+                                    onClick={() => setSelectedCustomer(c)}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-medium">{c.name}</span>
+                                      <span className="text-xs text-muted-foreground font-mono">{c.id.slice(0, 8)}</span>
+                                    </div>
+                                    <p className="text-muted-foreground text-xs">
+                                      {[c.email, c.phone, [c.city, c.state].filter(Boolean).join(", ")].filter(Boolean).join(" · ")}
+                                    </p>
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                          )}
+
+                          {/* Notes */}
+                          <div className="space-y-1">
+                            <Label>Notes</Label>
+                            <textarea
+                              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                              value={quoteNotes}
+                              onChange={(e) => setQuoteNotes(e.target.value)}
+                              placeholder="Any additional notes..."
+                            />
+                          </div>
                         </div>
-                        <div className="space-y-1">
-                          <Label>Phone</Label>
-                          <Input
-                            value={customerForm.phone}
-                            onChange={(e) => setCust("phone", e.target.value)}
-                          />
+                      ) : (
+                        /* New Customer Form */
+                        <div className="space-y-3">
+                          <div className="space-y-1">
+                            <Label>Customer Name</Label>
+                            <Input
+                              value={customerForm.name}
+                              onChange={(e) => setCust("name", e.target.value)}
+                              placeholder="John Smith"
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <Label>Email</Label>
+                              <Input
+                                type="email"
+                                value={customerForm.email}
+                                onChange={(e) => setCust("email", e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label>Phone</Label>
+                              <Input
+                                value={customerForm.phone}
+                                onChange={(e) => setCust("phone", e.target.value)}
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <Label>Address</Label>
+                            <Input
+                              value={customerForm.address}
+                              onChange={(e) => setCust("address", e.target.value)}
+                            />
+                          </div>
+                          <div className="grid grid-cols-3 gap-3">
+                            <div className="space-y-1">
+                              <Label>City</Label>
+                              <Input
+                                value={customerForm.city}
+                                onChange={(e) => setCust("city", e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label>State</Label>
+                              <Input
+                                value={customerForm.state}
+                                onChange={(e) => setCust("state", e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label>ZIP</Label>
+                              <Input
+                                value={customerForm.zip}
+                                onChange={(e) => setCust("zip", e.target.value)}
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <Label>Notes</Label>
+                            <textarea
+                              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                              value={customerForm.notes}
+                              onChange={(e) => setCust("notes", e.target.value)}
+                              placeholder="Any additional notes..."
+                            />
+                          </div>
                         </div>
-                      </div>
-                      <div className="space-y-1">
-                        <Label>Address</Label>
-                        <Input
-                          value={customerForm.address}
-                          onChange={(e) => setCust("address", e.target.value)}
-                        />
-                      </div>
-                      <div className="grid grid-cols-3 gap-3">
-                        <div className="space-y-1">
-                          <Label>City</Label>
-                          <Input
-                            value={customerForm.city}
-                            onChange={(e) => setCust("city", e.target.value)}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label>State</Label>
-                          <Input
-                            value={customerForm.state}
-                            onChange={(e) => setCust("state", e.target.value)}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label>ZIP</Label>
-                          <Input
-                            value={customerForm.zip}
-                            onChange={(e) => setCust("zip", e.target.value)}
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <Label>Notes</Label>
-                        <textarea
-                          className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                          value={customerForm.notes}
-                          onChange={(e) => setCust("notes", e.target.value)}
-                          placeholder="Any additional notes..."
-                        />
-                      </div>
+                      )}
+
                       <Button
                         className="w-full"
                         onClick={() => {
                           handleSaveQuote();
                           setSaveDialogOpen(false);
                         }}
-                        disabled={saving}
+                        disabled={saving || (customerMode === "existing" && !selectedCustomer)}
                       >
                         {saving ? "Saving..." : "Confirm & Save"}
                       </Button>
