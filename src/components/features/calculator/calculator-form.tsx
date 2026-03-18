@@ -10,6 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useSession } from "next-auth/react";
 import { PriceSummary } from "./price-summary";
 import {
   STANDARD_WIDTHS,
@@ -260,6 +267,14 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
     }));
   }, []);
 
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const { data: session } = useSession();
+  const [customerForm, setCustomerForm] = useState({
+    name: "", email: "", phone: "", address: "", city: "", state: "", zip: "", notes: "",
+  });
+  const setCust = (field: string, value: string) =>
+    setCustomerForm((prev) => ({ ...prev, [field]: value }));
+
   const handleSaveQuote = useCallback(async () => {
     if (!breakdown) return;
     setSaving(true);
@@ -267,7 +282,21 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
       const res = await fetch("/api/quotes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ regionId, config }),
+        body: JSON.stringify({
+          regionId,
+          config,
+          customer: {
+            name: customerForm.name || undefined,
+            email: customerForm.email || undefined,
+            phone: customerForm.phone || undefined,
+            address: customerForm.address || undefined,
+            city: customerForm.city || undefined,
+            state: customerForm.state || undefined,
+            zip: customerForm.zip || undefined,
+          },
+          notes: customerForm.notes || undefined,
+          office: session?.user?.office || undefined,
+        }),
       });
       const data = await res.json();
       if (data.id) {
@@ -278,7 +307,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
     } finally {
       setSaving(false);
     }
-  }, [breakdown, regionId, config, router]);
+  }, [breakdown, regionId, config, customerForm, session, router]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
@@ -883,13 +912,97 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
           <CardContent className="pt-6">
             <PriceSummary breakdown={breakdown} isWidespan={isWidespan} disclaimers={disclaimers} />
             {breakdown && (
-              <Button
-                className="mt-4 w-full"
-                onClick={handleSaveQuote}
-                disabled={saving}
-              >
-                {saving ? "Saving..." : "Save Quote"}
-              </Button>
+              <>
+                <Button
+                  className="mt-4 w-full"
+                  onClick={() => setSaveDialogOpen(true)}
+                >
+                  Save Quote
+                </Button>
+                <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Save Quote</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <Label>Customer Name</Label>
+                        <Input
+                          value={customerForm.name}
+                          onChange={(e) => setCust("name", e.target.value)}
+                          placeholder="John Smith"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label>Email</Label>
+                          <Input
+                            type="email"
+                            value={customerForm.email}
+                            onChange={(e) => setCust("email", e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label>Phone</Label>
+                          <Input
+                            value={customerForm.phone}
+                            onChange={(e) => setCust("phone", e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label>Address</Label>
+                        <Input
+                          value={customerForm.address}
+                          onChange={(e) => setCust("address", e.target.value)}
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="space-y-1">
+                          <Label>City</Label>
+                          <Input
+                            value={customerForm.city}
+                            onChange={(e) => setCust("city", e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label>State</Label>
+                          <Input
+                            value={customerForm.state}
+                            onChange={(e) => setCust("state", e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label>ZIP</Label>
+                          <Input
+                            value={customerForm.zip}
+                            onChange={(e) => setCust("zip", e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label>Notes</Label>
+                        <textarea
+                          className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                          value={customerForm.notes}
+                          onChange={(e) => setCust("notes", e.target.value)}
+                          placeholder="Any additional notes..."
+                        />
+                      </div>
+                      <Button
+                        className="w-full"
+                        onClick={() => {
+                          handleSaveQuote();
+                          setSaveDialogOpen(false);
+                        }}
+                        disabled={saving}
+                      >
+                        {saving ? "Saving..." : "Confirm & Save"}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </>
             )}
           </CardContent>
         </Card>
