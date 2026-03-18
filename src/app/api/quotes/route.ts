@@ -134,8 +134,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Validate created_by exists in profiles to avoid FK violation
   const profileId = session.user.profileId;
-  const validUuid = UUID_RE.test(profileId || "") ? profileId : null;
+  let validUuid: string | null = null;
+  if (profileId && UUID_RE.test(profileId)) {
+    const { data: profileExists } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", profileId)
+      .single();
+    if (profileExists) validUuid = profileId;
+  }
 
   // Resolve office: explicit param > session office > null
   const quoteOffice = office || session.user.office || null;
