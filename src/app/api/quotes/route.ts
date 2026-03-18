@@ -152,7 +152,8 @@ export async function POST(req: NextRequest) {
   const validUntil = new Date();
   validUntil.setDate(validUntil.getDate() + 30);
 
-  // If a customerId is provided, snapshot the customer info onto the quote
+  // Resolve customer: use existing customerId, or auto-create from form fields
+  let resolvedCustomerId: string | null = customerId || null;
   let customerName = customer?.name || null;
   let customerEmail = customer?.email || null;
   let customerPhone = customer?.phone || null;
@@ -161,11 +162,12 @@ export async function POST(req: NextRequest) {
   let customerState = customer?.state || null;
   let customerZip = customer?.zip || null;
 
-  if (customerId) {
+  if (resolvedCustomerId) {
+    // Existing customer — snapshot their info onto the quote
     const { data: cust } = await supabase
       .from("asc_customers")
       .select("name, email, phone, address, city, state, zip")
-      .eq("id", customerId)
+      .eq("id", resolvedCustomerId)
       .single();
     if (cust) {
       customerName = cust.name;
@@ -176,6 +178,28 @@ export async function POST(req: NextRequest) {
       customerState = cust.state;
       customerZip = cust.zip;
     }
+  } else if (customerName) {
+    // No existing customer — create one automatically
+    const { data: newCust, error: custError } = await supabase
+      .from("asc_customers")
+      .insert({
+        name: customerName,
+        email: customerEmail,
+        phone: customerPhone,
+        address: customerAddress,
+        city: customerCity,
+        state: customerState,
+        zip: customerZip,
+        office: quoteOffice || "Harbor",
+        created_by: validUuid,
+      })
+      .select("id")
+      .single();
+    if (custError) {
+      console.error("Auto-create customer error:", custError.message);
+    } else if (newCust) {
+      resolvedCustomerId = newCust.id;
+    }
   }
 
   const { data: quote, error: insertError } = await supabase
@@ -185,7 +209,7 @@ export async function POST(req: NextRequest) {
       region_id: regionId,
       pricing_data_id: pricingRow.id,
       created_by: validUuid,
-      customer_id: customerId || null,
+      customer_id: resolvedCustomerId,
       office: quoteOffice,
       status: "draft",
       customer_name: customerName,
