@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { AppHeader } from "@/components/layout/app-header";
 import { Badge } from "@/components/ui/badge";
@@ -134,7 +135,14 @@ export default function CustomersPage() {
                 <TableBody>
                   {customers.map((c) => (
                     <TableRow key={c.id}>
-                      <TableCell className="font-medium">{c.name}</TableCell>
+                      <TableCell>
+                        <Link
+                          href={`/customers/${c.id}`}
+                          className="font-medium text-primary hover:underline"
+                        >
+                          {c.name}
+                        </Link>
+                      </TableCell>
                       <TableCell>{c.email || "---"}</TableCell>
                       <TableCell>{c.phone || "---"}</TableCell>
                       <TableCell>

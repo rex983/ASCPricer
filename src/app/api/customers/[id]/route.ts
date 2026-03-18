@@ -14,7 +14,7 @@ export async function GET(
   const { id } = await params;
   const supabase = createAdminClient();
 
-  const { data, error } = await supabase
+  const { data: customer, error } = await supabase
     .from("asc_customers")
     .select("*")
     .eq("id", id)
@@ -27,7 +27,14 @@ export async function GET(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data);
+  // Also fetch quotes linked to this customer
+  const { data: quotes } = await supabase
+    .from("asc_quotes")
+    .select("id, quote_number, status, subtotal, total, created_at")
+    .eq("customer_id", id)
+    .order("created_at", { ascending: false });
+
+  return NextResponse.json({ ...customer, quotes: quotes || [] });
 }
 
 export async function DELETE(
