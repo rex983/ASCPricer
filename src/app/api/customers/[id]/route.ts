@@ -15,28 +15,16 @@ export async function GET(
   const supabase = createAdminClient();
 
   const { data, error } = await supabase
-    .from("asc_quotes")
+    .from("asc_customers")
     .select("*")
     .eq("id", id)
     .single();
 
   if (error) {
     if (error.code === "PGRST116") {
-      return NextResponse.json({ error: "Quote not found" }, { status: 404 });
+      return NextResponse.json({ error: "Customer not found" }, { status: 404 });
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  // Enforce access: sales_rep/viewer can only see own quotes
-  const { role, profileId, office } = session.user;
-  if (role === "sales_rep" || role === "viewer") {
-    if (data.created_by !== profileId) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
-  } else if (role === "manager" && office) {
-    if (data.office && data.office !== office) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
   }
 
   return NextResponse.json(data);
@@ -55,34 +43,20 @@ export async function PATCH(
   const body = await req.json();
   const supabase = createAdminClient();
 
-  // Only allow updating specific fields
   const allowed: Record<string, unknown> = {};
   const fields = [
-    "status",
-    "customer_name",
-    "customer_email",
-    "customer_phone",
-    "customer_address",
-    "customer_city",
-    "customer_state",
-    "customer_zip",
-    "customer_id",
-    "notes",
-    "valid_until",
+    "name", "email", "phone", "address", "city", "state", "zip", "notes",
   ];
   for (const f of fields) {
     if (f in body) allowed[f] = body[f];
   }
 
   if (Object.keys(allowed).length === 0) {
-    return NextResponse.json(
-      { error: "No valid fields to update" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "No valid fields" }, { status: 400 });
   }
 
   const { data, error } = await supabase
-    .from("asc_quotes")
+    .from("asc_customers")
     .update(allowed)
     .eq("id", id)
     .select()

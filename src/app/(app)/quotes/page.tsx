@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { AppHeader } from "@/components/layout/app-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ interface QuoteSummary {
   customer_state: string | null;
   subtotal: number;
   total: number;
+  office: string | null;
   created_at: string;
 }
 
@@ -30,10 +32,14 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function QuotesPage() {
+  const { data: session } = useSession();
   const [quotes, setQuotes] = useState<QuoteSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
+
+  const role = session?.user?.role;
+  const showOffice = role === "admin" || role === "manager";
 
   useEffect(() => {
     setLoading(true);
@@ -99,6 +105,7 @@ export default function QuotesPage() {
                     <TableHead>Quote #</TableHead>
                     <TableHead>Customer</TableHead>
                     <TableHead>State</TableHead>
+                    {showOffice && <TableHead>Office</TableHead>}
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead>Date</TableHead>
@@ -115,8 +122,17 @@ export default function QuotesPage() {
                           {q.quote_number}
                         </Link>
                       </TableCell>
-                      <TableCell>{q.customer_name || "—"}</TableCell>
-                      <TableCell>{q.customer_state || "—"}</TableCell>
+                      <TableCell>{q.customer_name || "---"}</TableCell>
+                      <TableCell>{q.customer_state || "---"}</TableCell>
+                      {showOffice && (
+                        <TableCell>
+                          {q.office ? (
+                            <Badge variant="outline">{q.office}</Badge>
+                          ) : (
+                            "---"
+                          )}
+                        </TableCell>
+                      )}
                       <TableCell>
                         <Badge variant={STATUS_COLORS[q.status] as "default" | "secondary" | "destructive"}>
                           {q.status}

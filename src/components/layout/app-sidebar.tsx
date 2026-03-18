@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Calculator, FileText, Upload, Map, History, SlidersHorizontal } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { Calculator, FileText, Upload, Map, History, SlidersHorizontal, Users } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -21,6 +22,7 @@ import { Logo } from "@/components/layout/logo";
 const navItems = [
   { title: "Calculator", href: "/calculator", icon: Calculator },
   { title: "Quotes", href: "/quotes", icon: FileText },
+  { title: "Customers", href: "/customers", icon: Users },
 ];
 
 const adminItems = [
@@ -32,6 +34,9 @@ const adminItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const role = session?.user?.role;
+  const showAdmin = role === "admin";
 
   return (
     <Sidebar>
@@ -62,26 +67,28 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Admin</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {adminItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname.startsWith(item.href)}
-                  >
-                    <Link href={item.href}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {showAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Admin</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {adminItems.map((item) => (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname.startsWith(item.href)}
+                    >
+                      <Link href={item.href}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
       <SidebarFooter className="border-t p-4">
         <UserNav />

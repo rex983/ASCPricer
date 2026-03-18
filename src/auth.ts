@@ -2,7 +2,7 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { UserRole } from "@/types/auth";
+import type { UserRole, Office } from "@/types/auth";
 
 const isDev =
   process.env.NODE_ENV === "development" ||
@@ -115,13 +115,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const supabase = createAdminClient();
           const { data: profile } = await supabase
             .from("profiles")
-            .select("id, role")
+            .select("id, role, office")
             .eq("email", user.email)
             .single();
 
           if (profile) {
             token.role = profile.role as UserRole;
             token.profileId = profile.id;
+            if (profile.office) token.office = profile.office as Office;
           }
         } catch {
           // fallback
@@ -134,6 +135,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (token) {
         session.user.role = token.role as UserRole;
         session.user.profileId = token.profileId as string;
+        if (token.office) session.user.office = token.office as Office;
       }
       return session;
     },

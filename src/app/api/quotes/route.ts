@@ -13,15 +13,26 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = createAdminClient();
+  const { role, profileId, office } = session.user;
   const url = req.nextUrl;
   const status = url.searchParams.get("status");
   const search = url.searchParams.get("search");
 
   let query = supabase
     .from("asc_quotes")
-    .select("id, quote_number, status, customer_name, customer_state, subtotal, total, created_at, updated_at, region_id")
+    .select(
+      "id, quote_number, status, customer_name, customer_state, subtotal, total, created_at, updated_at, region_id, office, created_by"
+    )
     .order("created_at", { ascending: false })
-    .limit(100);
+    .limit(200);
+
+  // Role-based filtering
+  if (role === "sales_rep" || role === "viewer") {
+    query = query.eq("created_by", profileId);
+  } else if (role === "manager" && office) {
+    query = query.eq("office", office);
+  }
+  // admin sees all
 
   if (status && status !== "all") {
     query = query.eq("status", status);
@@ -53,6 +64,8 @@ export async function POST(req: NextRequest) {
     pricingDataId,
     config,
     customer,
+    customerId,
+    office,
     notes,
   } = body as {
     regionId: string;
@@ -67,11 +80,16 @@ export async function POST(req: NextRequest) {
       state?: string;
       zip?: string;
     };
+    customerId?: string;
+    office?: string;
     notes?: string;
   };
 
   if (!regionId || !config) {
-    return NextResponse.json({ error: "regionId and config are required" }, { status: 400 });
+    return NextResponse.json(
+      { error: "regionId and config are required" },
+      { status: 400 }
+    );
   }
 
   const supabase = createAdminClient();
@@ -85,7 +103,10 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (!pricingRow) {
-    return NextResponse.json({ error: "No pricing data for this region" }, { status: 400 });
+    return NextResponse.json(
+      { error: "No pricing data for this region" },
+      { status: 400 }
+    );
   }
 
   // Server-side recalculation
@@ -93,16 +114,50 @@ export async function POST(req: NextRequest) {
   const pricing = calculatePrice(config, matrices);
 
   // Generate quote number
-  const { data: quoteNum, error: seqError } = await supabase.rpc("next_quote_number");
+  const { data: quoteNum, error: seqError } = await supabase.rpc(
+    "next_quote_number"
+  );
   if (seqError) {
-    return NextResponse.json({ error: "Failed to generate quote number" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to generate quote number" },
+      { status: 500 }
+    );
   }
 
   const profileId = session.user.profileId;
   const validUuid = UUID_RE.test(profileId || "") ? profileId : null;
 
+  // Resolve office: explicit param > session office > null
+  const quoteOffice = office || session.user.office || null;
+
   const validUntil = new Date();
   validUntil.setDate(validUntil.getDate() + 30);
+
+  // If a customerId is provided, snapshot the customer info onto the quote
+  let customerName = customer?.name || null;
+  let customerEmail = customer?.email || null;
+  let customerPhone = customer?.phone || null;
+  let customerAddress = customer?.address || null;
+  let customerCity = customer?.city || null;
+  let customerState = customer?.state || null;
+  let customerZip = customer?.zip || null;
+
+  if (customerId) {
+    const { data: cust } = await supabase
+      .from("asc_customers")
+      .select("name, email, phone, address, city, state, zip")
+      .eq("id", customerId)
+      .single();
+    if (cust) {
+      customerName = cust.name;
+      customerEmail = cust.email;
+      customerPhone = cust.phone;
+      customerAddress = cust.address;
+      customerCity = cust.city;
+      customerState = cust.state;
+      customerZip = cust.zip;
+    }
+  }
 
   const { data: quote, error: insertError } = await supabase
     .from("asc_quotes")
@@ -111,14 +166,16 @@ export async function POST(req: NextRequest) {
       region_id: regionId,
       pricing_data_id: pricingRow.id,
       created_by: validUuid,
+      customer_id: customerId || null,
+      office: quoteOffice,
       status: "draft",
-      customer_name: customer?.name || null,
-      customer_email: customer?.email || null,
-      customer_phone: customer?.phone || null,
-      customer_address: customer?.address || null,
-      customer_city: customer?.city || null,
-      customer_state: customer?.state || null,
-      customer_zip: customer?.zip || null,
+      customer_name: customerName,
+      customer_email: customerEmail,
+      customer_phone: customerPhone,
+      customer_address: customerAddress,
+      customer_city: customerCity,
+      customer_state: customerState,
+      customer_zip: customerZip,
       config,
       pricing,
       subtotal: pricing.subtotal,
