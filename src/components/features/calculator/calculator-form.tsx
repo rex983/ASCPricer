@@ -301,9 +301,11 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
       const data = await res.json();
       if (data.id) {
         router.push(`/quotes/${data.id}`);
+      } else {
+        alert(data.error || "Failed to save quote");
       }
-    } catch {
-      // ignore
+    } catch (e) {
+      alert("Network error saving quote");
     } finally {
       setSaving(false);
     }

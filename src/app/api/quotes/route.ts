@@ -111,7 +111,17 @@ export async function POST(req: NextRequest) {
 
   // Server-side recalculation
   const matrices = pricingRow.matrices as PricingMatrices;
-  const pricing = calculatePrice(config, matrices);
+  let pricing: ReturnType<typeof calculatePrice>;
+  try {
+    pricing = calculatePrice(config, matrices);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("Quote pricing error:", msg);
+    return NextResponse.json(
+      { error: `Pricing calculation failed: ${msg}` },
+      { status: 500 }
+    );
+  }
 
   // Generate quote number
   const { data: quoteNum, error: seqError } = await supabase.rpc(
