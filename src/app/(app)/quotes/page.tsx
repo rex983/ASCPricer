@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { AppHeader } from "@/components/layout/app-header";
@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { FileText, Search } from "lucide-react";
+import { FileText, Search, Trash2 } from "lucide-react";
 
 interface QuoteSummary {
   id: string;
@@ -40,8 +40,9 @@ export default function QuotesPage() {
 
   const role = session?.user?.role;
   const showOffice = role === "admin" || role === "manager";
+  const canDelete = role === "admin" || role === "manager" || role === "sales_rep";
 
-  useEffect(() => {
+  const fetchQuotes = useCallback(() => {
     setLoading(true);
     const params = new URLSearchParams();
     if (statusFilter !== "all") params.set("status", statusFilter);
@@ -55,6 +56,25 @@ export default function QuotesPage() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [statusFilter, search]);
+
+  useEffect(() => {
+    fetchQuotes();
+  }, [fetchQuotes]);
+
+  async function handleDelete(id: string, quoteNumber: string) {
+    if (!confirm(`Delete quote ${quoteNumber}? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/quotes/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setQuotes((prev) => prev.filter((q) => q.id !== id));
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to delete");
+      }
+    } catch {
+      alert("Network error");
+    }
+  }
 
   return (
     <>
@@ -109,6 +129,7 @@ export default function QuotesPage() {
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead>Date</TableHead>
+                    {canDelete && <TableHead className="w-10" />}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -144,6 +165,18 @@ export default function QuotesPage() {
                       <TableCell className="text-muted-foreground">
                         {formatDate(q.created_at)}
                       </TableCell>
+                      {canDelete && (
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            onClick={() => handleDelete(q.id, q.quote_number)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>

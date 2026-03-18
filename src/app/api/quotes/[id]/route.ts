@@ -42,6 +42,55 @@ export async function GET(
   return NextResponse.json(data);
 }
 
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { role, profileId, office } = session.user;
+  const { id } = await params;
+  const supabase = createAdminClient();
+
+  // Fetch the quote to check access
+  const { data: quote, error: fetchErr } = await supabase
+    .from("asc_quotes")
+    .select("id, created_by, office")
+    .eq("id", id)
+    .single();
+
+  if (fetchErr || !quote) {
+    return NextResponse.json({ error: "Quote not found" }, { status: 404 });
+  }
+
+  // Access control: admin=all, manager=own office, sales_rep=own only
+  if (role === "sales_rep") {
+    if (quote.created_by !== profileId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  } else if (role === "manager" && office) {
+    if (quote.office && quote.office !== office) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  } else if (role === "viewer") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { error } = await supabase
+    .from("asc_quotes")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true });
+}
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

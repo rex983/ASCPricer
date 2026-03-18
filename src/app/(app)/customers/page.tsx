@@ -29,7 +29,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Search, Users } from "lucide-react";
+import { Plus, Search, Trash2, Users } from "lucide-react";
 
 interface Customer {
   id: string;
@@ -51,6 +51,7 @@ export default function CustomersPage() {
 
   const userOffice = session?.user?.office;
   const userRole = session?.user?.role;
+  const canDelete = userRole === "admin" || userRole === "manager" || userRole === "sales_rep";
 
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
@@ -127,6 +128,7 @@ export default function CustomersPage() {
                     <TableHead>Phone</TableHead>
                     <TableHead>Location</TableHead>
                     <TableHead>Office</TableHead>
+                    {canDelete && <TableHead className="w-10" />}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -141,6 +143,31 @@ export default function CustomersPage() {
                       <TableCell>
                         <Badge variant="outline">{c.office}</Badge>
                       </TableCell>
+                      {canDelete && (
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            onClick={async () => {
+                              if (!confirm(`Delete customer "${c.name}"? This cannot be undone.`)) return;
+                              try {
+                                const res = await fetch(`/api/customers/${c.id}`, { method: "DELETE" });
+                                if (res.ok) {
+                                  setCustomers((prev) => prev.filter((x) => x.id !== c.id));
+                                } else {
+                                  const data = await res.json();
+                                  alert(data.error || "Failed to delete");
+                                }
+                              } catch {
+                                alert("Network error");
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>

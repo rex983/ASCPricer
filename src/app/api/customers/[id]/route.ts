@@ -30,6 +30,61 @@ export async function GET(
   return NextResponse.json(data);
 }
 
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { role, profileId, office } = session.user;
+  const { id } = await params;
+  const supabase = createAdminClient();
+
+  // Fetch the customer to check access
+  const { data: customer, error: fetchErr } = await supabase
+    .from("asc_customers")
+    .select("id, created_by, office")
+    .eq("id", id)
+    .single();
+
+  if (fetchErr || !customer) {
+    return NextResponse.json({ error: "Customer not found" }, { status: 404 });
+  }
+
+  // Access control: admin=all, manager=own office, sales_rep=own only
+  if (role === "sales_rep") {
+    if (customer.created_by !== profileId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  } else if (role === "manager" && office) {
+    if (customer.office && customer.office !== office) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  } else if (role === "viewer") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Nullify customer_id on any linked quotes (don't cascade-delete quotes)
+  await supabase
+    .from("asc_quotes")
+    .update({ customer_id: null })
+    .eq("customer_id", id);
+
+  const { error } = await supabase
+    .from("asc_customers")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true });
+}
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
