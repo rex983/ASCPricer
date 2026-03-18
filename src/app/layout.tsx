@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ASC Pricing",
-  description: "American Steel Carports Pricing Calculator",
+  title: "Big Buildings Direct",
+  description: "Big Buildings Direct Pricing Calculator",
 };
 
 export default function RootLayout({

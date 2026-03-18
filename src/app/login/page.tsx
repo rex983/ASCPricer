@@ -12,8 +12,8 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
+import { Logo } from "@/components/layout/logo";
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -40,10 +40,12 @@ function LoginForm() {
 
   return (
     <Card className="w-full max-w-sm">
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold">ASC Pricing</CardTitle>
+      <CardHeader className="text-center space-y-3">
+        <div className="flex justify-center">
+          <Logo size="large" />
+        </div>
         <CardDescription>
-          American Steel Carports Pricing Calculator
+          Pricing Calculator
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

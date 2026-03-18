@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Calculator, FileText, Upload, Map, Settings, History, SlidersHorizontal } from "lucide-react";
+import { Calculator, FileText, Upload, Map, History, SlidersHorizontal } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -16,6 +16,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { UserNav } from "@/components/layout/user-nav";
+import { Logo } from "@/components/layout/logo";
 
 const navItems = [
   { title: "Calculator", href: "/calculator", icon: Calculator },
@@ -35,9 +36,8 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="border-b px-4 py-3">
-        <Link href="/calculator" className="flex items-center gap-2">
-          <Settings className="h-5 w-5" />
-          <span className="text-lg font-bold">ASC Pricing</span>
+        <Link href="/calculator">
+          <Logo size="small" />
         </Link>
       </SidebarHeader>
       <SidebarContent>
