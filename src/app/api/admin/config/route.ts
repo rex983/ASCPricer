@@ -10,6 +10,11 @@ export async function GET() {
     .select("key, value");
 
   if (error) {
+    // If table doesn't exist yet, return empty config so the app
+    // falls back to hardcoded defaults instead of breaking
+    if (error.code === "42P01" || error.message?.includes("does not exist")) {
+      return NextResponse.json({});
+    }
     return NextResponse.json(
       { error: "Failed to load config: " + error.message },
       { status: 500 }

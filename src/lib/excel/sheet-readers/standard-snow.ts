@@ -283,27 +283,70 @@ export function readDiagonalBracing(ws: WorkSheet): {
   let baseBracePrice = 90;
   let tallSurcharge = 50;
 
-  // Scan for state thresholds (typically around rows 12-13)
+  // ── State wind thresholds ──
+  // Layout: row N has state codes (OH, MI, TX, AZ, PA, ...),
+  //         row N+1 has corresponding wind thresholds (140, 121, ...)
+  // States may repeat across columns; keep last value per state.
   for (let r = 0; r < Math.min(30, data.length); r++) {
     const row = data[r];
     if (!row) continue;
 
-    // Look for state abbreviations with wind thresholds
+    // Count state codes in this row
+    let stateCount = 0;
+    for (let c = 0; c < row.length; c++) {
+      if (cleanHeader(row[c]).match(/^[A-Z]{2}$/)) stateCount++;
+    }
+
+    if (stateCount >= 3) {
+      // This is the state code row — thresholds are in the next row
+      const thresholdRow = data[r + 1];
+      if (thresholdRow) {
+        for (let c = 0; c < row.length; c++) {
+          const state = cleanHeader(row[c]);
+          const threshold = num(thresholdRow[c]);
+          if (state.match(/^[A-Z]{2}$/) && threshold >= 100) {
+            windThresholdByState[state] = threshold;
+          }
+        }
+      }
+      break;
+    }
+
+    // Also check for horizontally paired state+threshold (legacy format)
     for (let c = 0; c < row.length - 1; c++) {
       const cellStr = cleanHeader(row[c]);
-      // State codes are 2 letter uppercase
       if (cellStr.match(/^[A-Z]{2}$/) && num(row[c + 1]) >= 100) {
         windThresholdByState[cellStr] = num(row[c + 1]);
       }
     }
+  }
 
-    // Look for brace pricing
-    const label = cleanHeader(row[0]);
-    if (label.toLowerCase().includes("price") || label.toLowerCase().includes("cost")) {
+  // ── Brace pricing ──
+  // Scan broadly for "Price Per" pattern (may not be in col 0)
+  for (let r = 0; r < Math.min(35, data.length); r++) {
+    const row = data[r];
+    if (!row) continue;
+    for (let c = 0; c < row.length - 1; c++) {
+      const label = cleanHeader(row[c]).toLowerCase();
+      if (label.includes("price per") && label.includes("db")) {
+        // Next non-empty numeric cell is the brace price
+        for (let vc = c + 1; vc < Math.min(c + 4, row.length); vc++) {
+          const val = num(row[vc]);
+          if (val >= 50 && val <= 500) {
+            baseBracePrice = val;
+            break;
+          }
+        }
+      }
+    }
+
+    // Legacy: check col 0 for "price"/"cost"
+    const label = cleanHeader(row[0]).toLowerCase();
+    if (label.includes("price") || label.includes("cost")) {
       for (let c = 1; c < row.length; c++) {
         const val = num(row[c]);
-        if (val >= 50 && val <= 200) {
-          if (!baseBracePrice || val < baseBracePrice) baseBracePrice = val;
+        if (val >= 50 && val <= 500) {
+          baseBracePrice = val;
           break;
         }
       }
