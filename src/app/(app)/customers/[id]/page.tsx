@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { canDeleteRecord, formatCurrency, formatDate, STATUS_COLORS } from "@/lib/utils";
 import { ArrowLeft, FileText, Trash2 } from "lucide-react";
 
 interface CustomerDetail {
@@ -40,13 +40,6 @@ interface CustomerDetail {
   }[];
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  draft: "secondary",
-  sent: "default",
-  accepted: "default",
-  expired: "destructive",
-};
-
 export default function CustomerDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -55,7 +48,7 @@ export default function CustomerDetailPage() {
   const [loading, setLoading] = useState(true);
 
   const role = session?.user?.role;
-  const canDelete = role === "admin" || role === "manager" || role === "sales_rep";
+  const canDelete = canDeleteRecord(role);
 
   useEffect(() => {
     fetch(`/api/customers/${id}`)
@@ -187,14 +180,7 @@ export default function CustomerDetailPage() {
                           </Link>
                         </TableCell>
                         <TableCell>
-                          <Badge
-                            variant={
-                              STATUS_COLORS[q.status] as
-                                | "default"
-                                | "secondary"
-                                | "destructive"
-                            }
-                          >
+                          <Badge variant={STATUS_COLORS[q.status]}>
                             {q.status}
                           </Badge>
                         </TableCell>

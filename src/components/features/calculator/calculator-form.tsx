@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -271,10 +272,11 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
   const { data: session } = useSession();
   const [customerMode, setCustomerMode] = useState<"new" | "existing">("new");
   const [customerForm, setCustomerForm] = useState({
-    name: "", email: "", phone: "", address: "", city: "", state: "", zip: "", notes: "",
+    name: "", email: "", phone: "", address: "", city: "", state: "", zip: "",
   });
   const setCust = (field: string, value: string) =>
     setCustomerForm((prev) => ({ ...prev, [field]: value }));
+  const [quoteNotes, setQuoteNotes] = useState("");
 
   // Existing customer search
   const [customerSearch, setCustomerSearch] = useState("");
@@ -283,7 +285,6 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
   >([]);
   const [selectedCustomer, setSelectedCustomer] = useState<typeof customerResults[number] | null>(null);
   const [searchingCustomers, setSearchingCustomers] = useState(false);
-  const [quoteNotes, setQuoteNotes] = useState("");
 
   // Debounced customer search
   useEffect(() => {
@@ -310,7 +311,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
       const payload: Record<string, unknown> = {
         regionId,
         config,
-        notes: (customerMode === "new" ? customerForm.notes : quoteNotes) || undefined,
+        notes: quoteNotes || undefined,
         office: session?.user?.office || undefined,
       };
 
@@ -344,7 +345,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
     } finally {
       setSaving(false);
     }
-  }, [breakdown, regionId, config, customerForm, quoteNotes, customerMode, selectedCustomer, session, router]);
+  }, [breakdown, regionId, config, customerForm, customerMode, selectedCustomer, quoteNotes, session, router]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
@@ -1051,8 +1052,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                           {/* Notes */}
                           <div className="space-y-1">
                             <Label>Notes</Label>
-                            <textarea
-                              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            <Textarea
                               value={quoteNotes}
                               onChange={(e) => setQuoteNotes(e.target.value)}
                               placeholder="Any additional notes..."
@@ -1119,10 +1119,9 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                           </div>
                           <div className="space-y-1">
                             <Label>Notes</Label>
-                            <textarea
-                              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                              value={customerForm.notes}
-                              onChange={(e) => setCust("notes", e.target.value)}
+                            <Textarea
+                              value={quoteNotes}
+                              onChange={(e) => setQuoteNotes(e.target.value)}
                               placeholder="Any additional notes..."
                             />
                           </div>
@@ -1131,10 +1130,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
 
                       <Button
                         className="w-full"
-                        onClick={() => {
-                          handleSaveQuote();
-                          setSaveDialogOpen(false);
-                        }}
+                        onClick={() => handleSaveQuote()}
                         disabled={saving || (customerMode === "existing" && !selectedCustomer)}
                       >
                         {saving ? "Saving..." : "Confirm & Save"}

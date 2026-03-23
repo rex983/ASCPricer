@@ -14,27 +14,27 @@ export async function GET(
   const { id } = await params;
   const supabase = createAdminClient();
 
-  const { data: customer, error } = await supabase
-    .from("asc_customers")
-    .select("*")
-    .eq("id", id)
-    .single();
+  // Fetch customer and their quotes in parallel
+  const [customerResult, quotesResult] = await Promise.all([
+    supabase.from("asc_customers").select("*").eq("id", id).single(),
+    supabase
+      .from("asc_quotes")
+      .select("id, quote_number, status, subtotal, total, created_at")
+      .eq("customer_id", id)
+      .order("created_at", { ascending: false }),
+  ]);
 
-  if (error) {
-    if (error.code === "PGRST116") {
+  if (customerResult.error) {
+    if (customerResult.error.code === "PGRST116") {
       return NextResponse.json({ error: "Customer not found" }, { status: 404 });
     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: customerResult.error.message }, { status: 500 });
   }
 
-  // Also fetch quotes linked to this customer
-  const { data: quotes } = await supabase
-    .from("asc_quotes")
-    .select("id, quote_number, status, subtotal, total, created_at")
-    .eq("customer_id", id)
-    .order("created_at", { ascending: false });
-
-  return NextResponse.json({ ...customer, quotes: quotes || [] });
+  return NextResponse.json({
+    ...customerResult.data,
+    quotes: quotesResult.data || [],
+  });
 }
 
 export async function DELETE(

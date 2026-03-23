@@ -30,6 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { canDeleteRecord } from "@/lib/utils";
 import { Plus, Search, Trash2, Users } from "lucide-react";
 
 interface Customer {
@@ -52,7 +53,7 @@ export default function CustomersPage() {
 
   const userOffice = session?.user?.office;
   const userRole = session?.user?.role;
-  const canDelete = userRole === "admin" || userRole === "manager" || userRole === "sales_rep";
+  const canDelete = canDeleteRecord(userRole);
 
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
@@ -72,6 +73,21 @@ export default function CustomersPage() {
   useEffect(() => {
     fetchCustomers();
   }, [fetchCustomers]);
+
+  async function handleDelete(id: string, name: string) {
+    if (!confirm(`Delete customer "${name}"? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/customers/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setCustomers((prev) => prev.filter((x) => x.id !== id));
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to delete");
+      }
+    } catch {
+      alert("Network error");
+    }
+  }
 
   return (
     <>
@@ -157,20 +173,7 @@ export default function CustomersPage() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            onClick={async () => {
-                              if (!confirm(`Delete customer "${c.name}"? This cannot be undone.`)) return;
-                              try {
-                                const res = await fetch(`/api/customers/${c.id}`, { method: "DELETE" });
-                                if (res.ok) {
-                                  setCustomers((prev) => prev.filter((x) => x.id !== c.id));
-                                } else {
-                                  const data = await res.json();
-                                  alert(data.error || "Failed to delete");
-                                }
-                              } catch {
-                                alert("Network error");
-                              }
-                            }}
+                            onClick={() => handleDelete(c.id, c.name)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

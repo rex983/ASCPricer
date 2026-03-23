@@ -20,3 +20,14 @@ export function formatDate(date: string | Date): string {
     year: "numeric",
   }).format(new Date(date));
 }
+
+export const STATUS_COLORS: Record<string, "default" | "secondary" | "destructive"> = {
+  draft: "secondary",
+  sent: "default",
+  accepted: "default",
+  expired: "destructive",
+};
+
+export function canDeleteRecord(role?: string): boolean {
+  return role === "admin" || role === "manager" || role === "sales_rep";
+}

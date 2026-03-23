@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { canDeleteRecord, formatCurrency, formatDate, STATUS_COLORS } from "@/lib/utils";
 import { FileText, Search, Trash2 } from "lucide-react";
 
 interface QuoteSummary {
@@ -24,13 +24,6 @@ interface QuoteSummary {
   created_at: string;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  draft: "secondary",
-  sent: "default",
-  accepted: "default",
-  expired: "destructive",
-};
-
 export default function QuotesPage() {
   const { data: session } = useSession();
   const [quotes, setQuotes] = useState<QuoteSummary[]>([]);
@@ -40,7 +33,7 @@ export default function QuotesPage() {
 
   const role = session?.user?.role;
   const showOffice = role === "admin" || role === "manager";
-  const canDelete = role === "admin" || role === "manager" || role === "sales_rep";
+  const canDelete = canDeleteRecord(role);
 
   const fetchQuotes = useCallback(() => {
     setLoading(true);
@@ -155,7 +148,7 @@ export default function QuotesPage() {
                         </TableCell>
                       )}
                       <TableCell>
-                        <Badge variant={STATUS_COLORS[q.status] as "default" | "secondary" | "destructive"}>
+                        <Badge variant={STATUS_COLORS[q.status]}>
                           {q.status}
                         </Badge>
                       </TableCell>

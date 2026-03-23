@@ -123,28 +123,25 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Generate quote number
-  const { data: quoteNum, error: seqError } = await supabase.rpc(
-    "next_quote_number"
-  );
-  if (seqError) {
+  // Generate quote number + validate profile in parallel
+  const profileId = session.user.profileId;
+  const needsProfileCheck = !!(profileId && UUID_RE.test(profileId));
+
+  const [quoteNumResult, profileResult] = await Promise.all([
+    supabase.rpc("next_quote_number"),
+    needsProfileCheck
+      ? supabase.from("profiles").select("id").eq("id", profileId).single()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  if (quoteNumResult.error) {
     return NextResponse.json(
       { error: "Failed to generate quote number" },
       { status: 500 }
     );
   }
-
-  // Validate created_by exists in profiles to avoid FK violation
-  const profileId = session.user.profileId;
-  let validUuid: string | null = null;
-  if (profileId && UUID_RE.test(profileId)) {
-    const { data: profileExists } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("id", profileId)
-      .single();
-    if (profileExists) validUuid = profileId;
-  }
+  const quoteNum = quoteNumResult.data;
+  const validUuid = profileResult.data ? profileId : null;
 
   // Resolve office: explicit param > session office > null
   const quoteOffice = office || session.user.office || null;
