@@ -499,12 +499,18 @@ export function calculateStandardSnowEngineering(
  * 3. Uses per-ft costs from snowCalc
  * 4. Girt perimeter based on enclosed surfaces only
  */
+export interface WidespanEngineeringResult {
+  cost: number;
+  extraTrusses: number;
+  extraVerticals: number;
+}
+
 export function calculateWidespanSnowEngineering(
   config: BuildingConfig,
   matrices: WidespanMatrices,
   resolvedKeys: { width: number; length: number }
-): number {
-  if (!config.snowLoad) return 0;
+): WidespanEngineeringResult {
+  if (!config.snowLoad) return { cost: 0, extraTrusses: 0, extraVerticals: 0 };
 
   const { width, length } = resolvedKeys;
 
@@ -529,6 +535,8 @@ export function calculateWidespanSnowEngineering(
   const snowCode = `${buildingType}-${config.snowLoad}`;
 
   let totalCost = 0;
+  let resultExtraTrusses = 0;
+  let resultExtraVerticals = 0;
 
   // ── Extra Trusses ──
   const trussData = matrices.snow.trussCounts[String(length)];
@@ -541,6 +549,7 @@ export function calculateWidespanSnowEngineering(
     // Spreadsheet: ceil(L/S) + 1 - 2 = ceil(L/S) - 1 (end trusses already included)
     const trussesNeeded = Math.ceil(lengthInches / maxSpacing) - 1;
     const extraTrusses = Math.max(0, trussesNeeded - originalTrusses);
+    resultExtraTrusses = extraTrusses;
 
     if (extraTrusses > 0) {
       const trussPrice =
@@ -613,11 +622,16 @@ export function calculateWidespanSnowEngineering(
     const totalVerticals = verticalsNeeded * 2; // both sides
 
     const extraVerticals = Math.max(0, totalVerticals - originalVerticals);
+    resultExtraVerticals = extraVerticals;
     if (extraVerticals > 0) {
       const verticalCostPerFt = matrices.snow.verticalCostPerFt || 18;
       totalCost += extraVerticals * verticalCostPerFt * halfWidth;
     }
   }
 
-  return Math.round(totalCost);
+  return {
+    cost: Math.round(totalCost),
+    extraTrusses: resultExtraTrusses,
+    extraVerticals: resultExtraVerticals,
+  };
 }

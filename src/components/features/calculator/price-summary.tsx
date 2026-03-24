@@ -57,7 +57,8 @@ export function PriceSummary({ breakdown, isWidespan, disclaimers: disclaimersPr
           ) : (
             <LineItem label="Snow/Wind Engineering" value={breakdown.snowEngineering} />
           )}
-          <LineItem label="Diagonal Bracing" value={breakdown.diagonalBracing} />
+          {!isWidespan && <LineItem label="Diagonal Bracing" value={breakdown.diagonalBracing} />}
+          {isWidespan && <LineItem label="Anchors" value={breakdown.anchors} />}
         </div>
 
         <Separator />

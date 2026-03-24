@@ -932,6 +932,23 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
               </div>
             </div>
 
+            {isWidespan && (
+              <div className="space-y-2">
+                <Label>Anchors</Label>
+                <Select
+                  value={config.anchorType || "none"}
+                  onValueChange={(v) => update("anchorType", v)}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">90 MPH Wind Warranty</SelectItem>
+                    <SelectItem value="titen_hd">Titen HD Concrete Screws</SelectItem>
+                    <SelectItem value="concrete">Concrete Anchors</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2">
                 <Switch

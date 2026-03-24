@@ -7,9 +7,6 @@ import { resolveWidespanKeys } from "./changers";
 import { lookupMatrix, lookupValue } from "./lookups";
 import {
   SHEET_METAL_MULTIPLIERS,
-  WIDESPAN_BRACE_COUNT_SHORT,
-  WIDESPAN_BRACE_COUNT_LONG,
-  WIDESPAN_BRACE_ENDS_EXTRA,
   WIDESPAN_PLANS_LEG_SURCHARGE,
   WIDESPAN_PLANS_DOOR_OPENING_COST,
   WIDESPAN_PLANS_OVER14_SURCHARGE,
@@ -17,7 +14,6 @@ import {
 } from "./constants";
 import {
   calculateWidespanSnowEngineering,
-  isDiagonalBracingNeeded,
 } from "./snow-engineering";
 
 /**
@@ -165,43 +161,27 @@ export function calculateWidespanPrice(
   }
 
   // ── Snow Engineering ──
-  const snowEngineering = calculateWidespanSnowEngineering(
+  const engineeringResult = calculateWidespanSnowEngineering(
     config,
     matrices,
     keys
   );
+  const snowEngineering = engineeringResult.cost;
 
-  // ── Diagonal Bracing (automatic — 3-trigger system) ──
-  const dbNeeded = isDiagonalBracingNeeded(config, false);
-
-  let diagonalBracing = 0;
-  if (dbNeeded) {
-    const bracePrice = matrices.snow.diagonalBracePrice || 350;
-    let braceCount =
-      keys.length <= 50 ? WIDESPAN_BRACE_COUNT_SHORT : WIDESPAN_BRACE_COUNT_LONG;
-
-    // Add extra braces for enclosed ends (gable or fully enclosed)
-    if (config.endType === "gable" || config.endType === "enclosed") {
-      braceCount += WIDESPAN_BRACE_ENDS_EXTRA * config.endsQty;
-    }
-
-    diagonalBracing = braceCount * bracePrice;
-  }
+  // No diagonal bracing for widespan buildings
+  const diagonalBracing = 0;
 
   // ── Anchors ──
+  // Spreadsheet: anchor count = (extraTrusses × 8) + (extraVerticals × 2)
+  // Anchor types: titen_hd ($15/ea), concrete ($0/ea), or none
   let anchors = 0;
   if (config.anchorType && config.anchorType !== "none") {
     const anchorCostEach = WIDESPAN_ANCHOR_PRICES[config.anchorType] ?? 0;
     if (anchorCostEach > 0) {
-      // Anchor count = totalTrusses × 8 + verticals × 2
-      // Use original truss count for the building length
-      const trussData = matrices.snow.trussCounts[String(keys.length)];
-      const trusses = trussData?.count || 0;
-      const verticals = lookupValue(
-        matrices.snow.verticalCountByWidth,
-        String(keys.width)
+      const anchorCount = Math.max(
+        0,
+        engineeringResult.extraTrusses * 8 + engineeringResult.extraVerticals * 2
       );
-      const anchorCount = trusses * 8 + verticals * 2;
       anchors = anchorCount * anchorCostEach;
     }
   }
