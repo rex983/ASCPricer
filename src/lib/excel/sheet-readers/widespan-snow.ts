@@ -247,6 +247,11 @@ export function readWidespanSnowCalc(ws: WorkSheet): {
   legTrussCostPerFt: number;
   diagonalBracePrice: number;
   girtCostPerFt: number;
+  originalTrusses: number;
+  originalPurlins: number;
+  originalGirts: number;
+  originalVerticals: number;
+  defaultTrussSpacing: number;
 } {
   const data = sheetToArray(ws);
 
@@ -256,44 +261,97 @@ export function readWidespanSnowCalc(ws: WorkSheet): {
   let legTrussCostPerFt = 90;
   let diagonalBracePrice = 350;
   let girtCostPerFt = 6;
+  let originalTrusses = 3;
+  let originalPurlins = 10;
+  let originalGirts = 3;
+  let originalVerticals = 1;
+  let defaultTrussSpacing = 120;
 
-  // Scan for truss price table (typically cols Z-AO, rows 1-2)
-  // Width groups: 32-40 = 1605, 42-48 = 1865, 50-60 = 2145
+  // Scan for truss price table (typically cols Z-AO)
+  // Layout: one row has widths (32,34,...,60), next row has prices (1605,1865,2145)
+  // OR: adjacent column pairs (width, price) in the same row
   for (let r = 0; r < Math.min(10, data.length); r++) {
     const row = data[r];
+    const nextRow = data[r + 1];
     if (!row) continue;
-    for (let c = 20; c < row.length - 1; c++) {
-      const width = num(row[c]);
-      const price = num(row[c + 1]);
-      if (width >= 32 && width <= 60 && price >= 1000 && price <= 5000) {
-        trussPriceByWidthGroup[String(width)] = price;
+    // Try vertical layout: widths in this row, prices in next row
+    if (nextRow) {
+      for (let c = 20; c < row.length; c++) {
+        const width = num(row[c]);
+        const price = num(nextRow[c]);
+        if (width >= 32 && width <= 60 && price >= 1000 && price <= 5000) {
+          trussPriceByWidthGroup[String(width)] = price;
+        }
+      }
+    }
+    // Try horizontal layout: adjacent (width, price) pairs
+    if (Object.keys(trussPriceByWidthGroup).length === 0) {
+      for (let c = 20; c < row.length - 1; c++) {
+        const width = num(row[c]);
+        const price = num(row[c + 1]);
+        if (width >= 32 && width <= 60 && price >= 1000 && price <= 5000) {
+          trussPriceByWidthGroup[String(width)] = price;
+        }
       }
     }
   }
 
-  // Scan for cost constants
+  // Scan for cost constants and original counts
   for (let r = 0; r < Math.min(30, data.length); r++) {
     const row = data[r];
     if (!row) continue;
     for (let c = 0; c < row.length; c++) {
       const label = cleanHeader(row[c]);
-      if (label.toLowerCase().includes("purlin") && label.toLowerCase().includes("l/ft")) {
+      const lower = label.toLowerCase();
+
+      if (lower.includes("purlin") && lower.includes("l/ft")) {
         const val = num(row[c + 1]) || num(row[c - 1]);
         if (val > 0 && val < 50) purlinCostPerFt = val;
       }
-      if (label.toLowerCase().includes("vertical") && label.toLowerCase().includes("l/ft")) {
+      if (lower.includes("vertical") && lower.includes("l/ft")) {
         const val = num(row[c + 1]) || num(row[c - 1]);
         if (val > 0 && val < 50) verticalCostPerFt = val;
       }
-      if (label.toLowerCase().includes("leg") && label.toLowerCase().includes("truss")) {
+      if (lower.includes("leg") && lower.includes("truss")) {
         const val = num(row[c + 1]) || num(row[c - 1]);
         if (val > 0 && val < 200) legTrussCostPerFt = val;
       }
-      if (label.toLowerCase().includes("diagonal") || label.toLowerCase().includes("db")) {
+      if (lower.includes("diagonal") || lower.includes("price per db")) {
         const val = num(row[c + 1]) || num(row[c - 1]);
-        if (val >= 300 && val <= 500) diagonalBracePrice = val;
+        if (val >= 100 && val <= 1000) diagonalBracePrice = val;
+      }
+
+      // Original counts — labels like "Original Trusses", "Original Hat Channel",
+      // "Original Girts", "Original Verticals" with value 2 cols to the right
+      if (lower.includes("original")) {
+        // Value is typically 2 columns right (skips blank col)
+        const val2 = num(row[c + 2]);
+        const val1 = num(row[c + 1]);
+        const val = val2 > 0 ? val2 : val1;
+        if (lower.includes("truss") && val > 0 && val <= 20) {
+          originalTrusses = val;
+        } else if ((lower.includes("hat") || lower.includes("purlin") || lower.includes("channel")) && val > 0 && val <= 30) {
+          originalPurlins = val;
+        } else if (lower.includes("girt") && val > 0 && val <= 20) {
+          originalGirts = val;
+        } else if (lower.includes("vertical") && val > 0 && val <= 20) {
+          originalVerticals = val;
+        }
+      }
+
+      // Default truss spacing — first column value in row 1 area (120")
+      if (lower.includes("truss") && lower.includes("spacing") && lower.includes("requ")) {
+        const val = num(row[c + 1]) || num(row[c - 1]);
+        if (val >= 60 && val <= 240) defaultTrussSpacing = val;
       }
     }
+  }
+
+  // Fallback: if no "Truss Spacing Required" label found, check col O row 2
+  // (the spacing value is often at fixed position)
+  if (defaultTrussSpacing === 120 && data[1]) {
+    const val = num(data[1][14]); // col O (index 14)
+    if (val >= 60 && val <= 240) defaultTrussSpacing = val;
   }
 
   return {
@@ -303,5 +361,10 @@ export function readWidespanSnowCalc(ws: WorkSheet): {
     legTrussCostPerFt,
     diagonalBracePrice,
     girtCostPerFt,
+    originalTrusses,
+    originalPurlins,
+    originalGirts,
+    originalVerticals,
+    defaultTrussSpacing,
   };
 }

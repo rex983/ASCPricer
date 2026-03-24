@@ -102,31 +102,74 @@ export function parseWidespanWorkbook(workbook: WorkBook): WidespanMatrices {
         legTrussCostPerFt: 90,
         diagonalBracePrice: 350,
         girtCostPerFt: 6,
+        originalTrusses: 3,
+        originalPurlins: 10,
+        originalGirts: 3,
+        originalVerticals: 1,
+        defaultTrussSpacing: 120,
       };
 
   // Build structured snow matrices
   const trussSpacing: Record<string, Record<string, number>> = {};
   const trussCounts: Record<string, Record<string, number>> = {};
-  for (const [len, count] of Object.entries(snowLoad.trussCountByLength)) {
-    trussCounts[len] = { count };
-  }
-  for (const [len, spacing] of Object.entries(snowLoad.trussSpacingByLength)) {
-    trussSpacing[len] = { spacing };
+
+  // Truss counts/spacing: may be per-length tables from Snow Load sheet,
+  // or single constants from Snow Load Calculation.
+  // If no per-length data, populate all standard lengths with the constant.
+  if (Object.keys(snowLoad.trussCountByLength).length > 0) {
+    for (const [len, count] of Object.entries(snowLoad.trussCountByLength)) {
+      trussCounts[len] = { count };
+    }
+    for (const [len, spacing] of Object.entries(snowLoad.trussSpacingByLength)) {
+      trussSpacing[len] = { spacing };
+    }
+  } else {
+    // Populate from constants for all standard widespan lengths
+    const lengths = [20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100,105,110,115,120,125,130,135,140,145,150,155,160];
+    for (const len of lengths) {
+      trussCounts[String(len)] = { count: snowCalc.originalTrusses };
+      trussSpacing[String(len)] = { spacing: snowCalc.defaultTrussSpacing };
+    }
   }
 
+  // Purlin counts: per-width table from Snow Load, or constant from Snow Load Calc
   const purlinCounts: Record<string, Record<string, number>> = {};
-  for (const [w, count] of Object.entries(snowLoad.originalPurlinByWidth)) {
-    purlinCounts[w] = { count };
+  if (Object.keys(snowLoad.originalPurlinByWidth).length > 0) {
+    for (const [w, count] of Object.entries(snowLoad.originalPurlinByWidth)) {
+      purlinCounts[w] = { count };
+    }
+  } else {
+    const widths = [32,34,36,38,40,42,44,46,48,50,52,54,56,58,60];
+    for (const w of widths) {
+      purlinCounts[String(w)] = { count: snowCalc.originalPurlins };
+    }
   }
 
   const girtSpacing: Record<string, Record<string, number>> = {};
   for (const [wind, spacing] of Object.entries(snowLoad.girtSpacingByWind)) {
     girtSpacing[wind] = { spacing };
   }
+
+  // Girt counts: per-height table from Snow Load, or constant from Snow Load Calc
   const girtCounts: Record<string, Record<string, number>> = {};
-  for (const [h, count] of Object.entries(snowLoad.originalGirtsByHeight)) {
-    girtCounts[h] = { count };
+  if (Object.keys(snowLoad.originalGirtsByHeight).length > 0) {
+    for (const [h, count] of Object.entries(snowLoad.originalGirtsByHeight)) {
+      girtCounts[h] = { count };
+    }
+  } else {
+    for (let h = 8; h <= 20; h++) {
+      girtCounts[String(h)] = { count: snowCalc.originalGirts };
+    }
   }
+
+  // Vertical count by width: from Snow Load sheet, or constant from Snow Load Calc
+  const verticalCountByWidth = Object.keys(snowLoad.verticalCountByWidth).length > 0
+    ? snowLoad.verticalCountByWidth
+    : Object.fromEntries(
+        [32,34,36,38,40,42,44,46,48,50,52,54,56,58,60].map(
+          w => [String(w), snowCalc.originalVerticals]
+        )
+      );
 
   return {
     type: "widespan",
@@ -164,7 +207,7 @@ export function parseWidespanWorkbook(workbook: WorkBook): WidespanMatrices {
       girtCounts,
       trussPriceByState: snowCalc.trussPriceByWidthGroup,
       diagonalBracePrice: snowCalc.diagonalBracePrice,
-      verticalCountByWidth: snowLoad.verticalCountByWidth,
+      verticalCountByWidth,
       verticalSpacingByWind: snowLoad.verticalSpacingByWind,
       purlinCostPerFt: snowCalc.purlinCostPerFt,
       verticalCostPerFt: snowCalc.verticalCostPerFt,
