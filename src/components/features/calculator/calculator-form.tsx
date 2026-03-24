@@ -941,7 +941,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">90 MPH Wind Warranty</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     <SelectItem value="titen_hd">Titen HD Concrete Screws</SelectItem>
                     <SelectItem value="concrete">Concrete Anchors</SelectItem>
                   </SelectContent>
