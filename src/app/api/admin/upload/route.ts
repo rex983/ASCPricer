@@ -139,11 +139,13 @@ export async function POST(req: NextRequest) {
     const result = parseSpreadsheet(new Uint8Array(buffer));
 
     if (!result.validation.valid) {
+      const errorMsg = result.validation.errors.join("; ");
+      console.error("[Upload] Validation failed:", errorMsg);
       await supabase
         .from("asc_uploads")
         .update({
           status: "failed",
-          error_message: result.validation.errors.join("; "),
+          error_message: errorMsg,
         })
         .eq("id", upload.id);
 
@@ -157,24 +159,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Update upload with detected type and sheet count
-    await supabase
-      .from("asc_uploads")
-      .update({
-        spreadsheet_type: result.detection.type,
-        sheet_count: result.detection.sheetCount,
-        status: "success",
-      })
-      .eq("id", upload.id);
-
-    // Deactivate previous current pricing for this region+type
-    await supabase
-      .from("asc_pricing_data")
-      .update({ is_current: false })
-      .eq("region_id", regionId)
-      .eq("spreadsheet_type", result.detection.type)
-      .eq("is_current", true);
-
     // Get next version number
     const { data: prevVersions } = await supabase
       .from("asc_pricing_data")
@@ -186,13 +170,13 @@ export async function POST(req: NextRequest) {
 
     const nextVersion = (prevVersions?.[0]?.version ?? 0) + 1;
 
-    // Insert new pricing data
+    // Insert new pricing data (not yet current — flip after confirming success)
     const { data: pricingData, error: pricingError } = await supabase
       .from("asc_pricing_data")
       .insert({
         region_id: regionId,
         version: nextVersion,
-        is_current: true,
+        is_current: false,
         spreadsheet_type: result.detection.type,
         matrices: result.matrices,
         upload_id: upload.id,
@@ -201,6 +185,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (pricingError) {
+      console.error("[Upload] Failed to store pricing data:", pricingError.message);
       await supabase
         .from("asc_uploads")
         .update({
@@ -214,6 +199,29 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Insert succeeded — now deactivate old current and activate new one
+    await supabase
+      .from("asc_pricing_data")
+      .update({ is_current: false })
+      .eq("region_id", regionId)
+      .eq("spreadsheet_type", result.detection.type)
+      .eq("is_current", true);
+
+    await supabase
+      .from("asc_pricing_data")
+      .update({ is_current: true })
+      .eq("id", pricingData.id);
+
+    // Update upload record to success
+    await supabase
+      .from("asc_uploads")
+      .update({
+        spreadsheet_type: result.detection.type,
+        sheet_count: result.detection.sheetCount,
+        status: "success",
+      })
+      .eq("id", upload.id);
 
     // Auto-detect config changes from parsed matrices and update asc_app_config
     await syncConfigFromMatrices(supabase, result.matrices, result.detection.type);
@@ -251,6 +259,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("[Upload] Parse failed:", message);
     await supabase
       .from("asc_uploads")
       .update({ status: "failed", error_message: message })
