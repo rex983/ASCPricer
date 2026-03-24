@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Building2, Loader2, Warehouse } from "lucide-react";
+import { Building2, History, Loader2, Warehouse } from "lucide-react";
 import { AppHeader } from "@/components/layout/app-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +18,15 @@ interface Region {
   spreadsheet_type: string;
 }
 
+interface PricingVersion {
+  id: string;
+  version: number;
+  spreadsheetType: string;
+  isCurrent: boolean;
+  createdAt: string;
+  filename: string | null;
+}
+
 export default function CalculatorPage() {
   const [spreadsheetType, setSpreadsheetType] = useState<SpreadsheetType | null>(null);
   const [regions, setRegions] = useState<Region[]>([]);
@@ -26,6 +35,8 @@ export default function CalculatorPage() {
   const [loadingMatrices, setLoadingMatrices] = useState(false);
   const [matricesError, setMatricesError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [versions, setVersions] = useState<PricingVersion[]>([]);
+  const [selectedVersion, setSelectedVersion] = useState<string>("current");
   const [appConfig, setAppConfig] = useState<AppConfig>({});
 
   // Fetch app config once on mount
@@ -46,12 +57,28 @@ export default function CalculatorPage() {
       .then((data) => {
         if (Array.isArray(data)) setRegions(data);
         setSelectedRegion("");
+        setSelectedVersion("current");
         setMatrices(null);
       })
       .catch(() => {});
   }, [spreadsheetType]);
 
-  // Fetch pricing matrices when region changes
+  // Fetch versions list when region changes
+  useEffect(() => {
+    if (!selectedRegion) {
+      setVersions([]);
+      setSelectedVersion("current");
+      return;
+    }
+    fetch(`/api/pricing/${selectedRegion}/versions`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setVersions(data);
+      })
+      .catch(() => {});
+  }, [selectedRegion]);
+
+  // Fetch pricing matrices when region or version changes
   useEffect(() => {
     if (!selectedRegion) {
       setMatrices(null);
@@ -61,7 +88,11 @@ export default function CalculatorPage() {
     }
     setLoadingMatrices(true);
     setMatricesError(null);
-    fetch(`/api/pricing/${selectedRegion}`)
+    const url =
+      selectedVersion === "current"
+        ? `/api/pricing/${selectedRegion}`
+        : `/api/pricing/${selectedRegion}?versionId=${selectedVersion}`;
+    fetch(url)
       .then(async (r) => {
         if (!r.ok) {
           const body = await r.json().catch(() => ({}));
@@ -78,7 +109,7 @@ export default function CalculatorPage() {
         setMatrices(null);
       })
       .finally(() => setLoadingMatrices(false));
-  }, [selectedRegion]);
+  }, [selectedRegion, selectedVersion]);
 
   // Step 1: Choose building type
   if (!spreadsheetType) {
@@ -141,6 +172,7 @@ export default function CalculatorPage() {
               onClick={() => {
                 setSpreadsheetType(null);
                 setSelectedRegion("");
+                setSelectedVersion("current");
                 setMatrices(null);
               }}
             >
@@ -166,9 +198,36 @@ export default function CalculatorPage() {
                 ))}
               </SelectContent>
             </Select>
+            {selectedRegion && versions.length > 1 && (
+              <Select value={selectedVersion} onValueChange={setSelectedVersion}>
+                <SelectTrigger className="w-72">
+                  <History className="mr-1 h-4 w-4 shrink-0" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="current">Current Pricing</SelectItem>
+                  {versions
+                    .filter((v) => !v.isCurrent)
+                    .map((v) => (
+                      <SelectItem key={v.id} value={v.id}>
+                        v{v.version} &mdash;{" "}
+                        {new Date(v.createdAt).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                        {v.filename ? ` (${v.filename})` : ""}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            )}
             {lastUpdated && (
               <span className="text-sm text-muted-foreground">
-                Last Updated{" "}
+                {selectedVersion !== "current" && (
+                  <span className="mr-1 text-amber-600 font-medium">Viewing old pricing &mdash;</span>
+                )}
+                Uploaded{" "}
                 {new Date(lastUpdated).toLocaleDateString("en-US", {
                   month: "short",
                   day: "numeric",

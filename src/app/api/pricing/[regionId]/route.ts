@@ -2,18 +2,25 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ regionId: string }> }
 ) {
   const { regionId } = await params;
+  const versionId = req.nextUrl.searchParams.get("versionId");
   const supabase = createAdminClient();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("asc_pricing_data")
     .select("id, region_id, spreadsheet_type, matrices, version, created_at")
-    .eq("region_id", regionId)
-    .eq("is_current", true)
-    .single();
+    .eq("region_id", regionId);
+
+  if (versionId) {
+    query = query.eq("id", versionId);
+  } else {
+    query = query.eq("is_current", true);
+  }
+
+  const { data, error } = await query.single();
 
   if (error) {
     if (error.code === "PGRST116") {
