@@ -39,6 +39,17 @@ export function nearestBucket(value: number, buckets: readonly number[]): number
 }
 
 /**
+ * Find the nearest bucket for a given value, rounding UP to the next valid bucket.
+ * Used for structural engineering lookups where conservative (higher) values are safer.
+ */
+export function nearestBucketUp(value: number, buckets: readonly number[]): number {
+  for (const bucket of buckets) {
+    if (bucket >= value) return bucket;
+  }
+  return buckets[buckets.length - 1]; // cap at highest
+}
+
+/**
  * Round a value to the nearest increment (e.g., nearest 5ft for length).
  */
 export function roundToIncrement(value: number, increment: number): number {

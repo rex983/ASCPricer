@@ -4,7 +4,7 @@ import type {
   WidespanMatrices,
   PricingLookup,
 } from "@/types/pricing";
-import { lookupMatrix, lookupValue, nearestBucket } from "./lookups";
+import { lookupMatrix, lookupValue, nearestBucket, nearestBucketUp } from "./lookups";
 import {
   WIND_LOAD_CATEGORIES,
   WIDESPAN_WIND_CATEGORIES_MAIN,
@@ -519,7 +519,8 @@ export function calculateWidespanSnowEngineering(
   const rawWind = config.windRating || 105;
   const windMain = nearestBucket(rawWind, WIDESPAN_WIND_CATEGORIES_MAIN);
   // Wind load — mapping #2 for girts (90/110/120/130)
-  const windGirt = nearestBucket(rawWind, WIDESPAN_WIND_CATEGORIES_GIRT);
+  // Girt wind rounds UP to the more conservative (higher wind → tighter spacing) bucket
+  const windGirt = nearestBucketUp(rawWind, WIDESPAN_WIND_CATEGORIES_GIRT);
 
   // Build config key: "E-105-S" or "O-130-G"
   const configKey = `${enclosure}-${windMain}-${buildingType}`;
@@ -537,7 +538,8 @@ export function calculateWidespanSnowEngineering(
       matrices.snow.trussSpacing[String(length)]?.spacing || 120;
 
     const lengthInches = length * 12;
-    const trussesNeeded = Math.ceil(lengthInches / maxSpacing) + 1;
+    // Spreadsheet: ceil(L/S) + 1 - 2 = ceil(L/S) - 1 (end trusses already included)
+    const trussesNeeded = Math.ceil(lengthInches / maxSpacing) - 1;
     const extraTrusses = Math.max(0, trussesNeeded - originalTrusses);
 
     if (extraTrusses > 0) {
