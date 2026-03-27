@@ -459,18 +459,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                   </Select>
                 </div>
               )}
-              <div className="space-y-1">
-                <Label className="text-xs"># Ends</Label>
-                <Select value={String(config.endsQty)} onValueChange={(v) => update("endsQty", Number(v) as 0 | 1 | 2)}>
-                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0">None</SelectItem>
-                    <SelectItem value="1">1</SelectItem>
-                    <SelectItem value="2">2</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {config.endsQty > 0 && (
+              {config.endsQty > 0 ? (
                 <div className="space-y-1">
                   <Label className="text-xs">End Type</Label>
                   <Select value={config.endType} onValueChange={handleEndType}>
@@ -482,7 +471,20 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                     </SelectContent>
                   </Select>
                 </div>
+              ) : (
+                <div />
               )}
+              <div className="space-y-1">
+                <Label className="text-xs"># Ends</Label>
+                <Select value={String(config.endsQty)} onValueChange={(v) => update("endsQty", Number(v) as 0 | 1 | 2)}>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">None</SelectItem>
+                    <SelectItem value="1">1</SelectItem>
+                    <SelectItem value="2">2</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               {config.endsQty > 0 && !isWidespan && (
                 <div className="space-y-1">
                   <Label className="text-xs">End Panel</Label>
