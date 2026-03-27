@@ -19,9 +19,9 @@ export interface ParseResult {
  * 3. Parse all sheets into structured matrices
  * 4. Validate the result
  */
-export function parseSpreadsheet(buffer: ArrayBuffer | Uint8Array): ParseResult {
+export function parseSpreadsheet(buffer: ArrayBuffer | Uint8Array, filename?: string): ParseResult {
   const workbook = XLSX.read(buffer, { type: "array" });
-  const detection = detectSpreadsheetType(workbook);
+  const detection = detectSpreadsheetType(workbook, filename);
 
   let matrices: PricingMatrices;
   if (detection.type === "standard") {

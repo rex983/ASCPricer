@@ -149,7 +149,7 @@ export async function POST(req: NextRequest) {
   try {
     // Parse the spreadsheet
     const buffer = await file.arrayBuffer();
-    const result = parseSpreadsheet(new Uint8Array(buffer));
+    const result = parseSpreadsheet(new Uint8Array(buffer), file.name);
 
     // ── Mismatch checks ──
     // 1. Type mismatch: detected type vs region's expected type
@@ -170,7 +170,10 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Region mismatch: detected states vs region's states
-    const detectedStates = result.detection.states;
+    // Prefer filename-extracted states (most reliable), fall back to cell-extracted
+    const detectedStates = result.detection.filenameStates.length > 0
+      ? result.detection.filenameStates
+      : result.detection.states;
     const regionStates = (region.states as string[]) || [];
     if (detectedStates.length > 0 && regionStates.length > 0) {
       const overlap = detectedStates.some((s) => regionStates.includes(s));
