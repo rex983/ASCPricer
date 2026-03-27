@@ -160,7 +160,7 @@ function QuoteDocument({ quote }: { quote: Quote }) {
         {/* Plans & Calculations (separate from building total) */}
         {(p.plans > 0 || p.calculations > 0) && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Plans &amp; Calculations (separate transaction)</Text>
+            <Text style={styles.sectionTitle}>Plans &amp; Calculations (if needed)</Text>
             <PriceLine label="Plans" value={p.plans} />
             <PriceLine label="Calculations" value={p.calculations} />
             {(p.plans > 0 || p.calculations > 0) && (
