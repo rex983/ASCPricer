@@ -112,6 +112,17 @@ export async function POST(req: NextRequest) {
 
   const supabase = createAdminClient();
 
+  // Look up the target region for mismatch checks
+  const { data: region } = await supabase
+    .from("asc_regions")
+    .select("name, slug, states, spreadsheet_type")
+    .eq("id", regionId)
+    .single();
+
+  if (!region) {
+    return NextResponse.json({ error: "Region not found" }, { status: 400 });
+  }
+
   // Create upload record
   const uploadRow: Record<string, unknown> = {
     region_id: regionId,
@@ -139,6 +150,42 @@ export async function POST(req: NextRequest) {
     // Parse the spreadsheet
     const buffer = await file.arrayBuffer();
     const result = parseSpreadsheet(new Uint8Array(buffer));
+
+    // ── Mismatch checks ──
+    // 1. Type mismatch: detected type vs region's expected type
+    const detectedType = result.detection.type;
+    const expectedType = region.spreadsheet_type as string;
+    if (detectedType !== expectedType) {
+      const typeLabel = detectedType === "widespan" ? "Widespan (32'–60')" : "Standard (12'–30')";
+      const expectedLabel = expectedType === "widespan" ? "Widespan (32'–60')" : "Standard (12'–30')";
+      const mismatchMsg = `Size mismatch: This spreadsheet is ${typeLabel}, but the "${region.name}" region expects ${expectedLabel}.`;
+      await supabase
+        .from("asc_uploads")
+        .update({ status: "failed", error_message: mismatchMsg })
+        .eq("id", upload.id);
+      return NextResponse.json(
+        { error: mismatchMsg, mismatchType: "size" },
+        { status: 422 }
+      );
+    }
+
+    // 2. Region mismatch: detected states vs region's states
+    const detectedStates = result.detection.states;
+    const regionStates = (region.states as string[]) || [];
+    if (detectedStates.length > 0 && regionStates.length > 0) {
+      const overlap = detectedStates.some((s) => regionStates.includes(s));
+      if (!overlap) {
+        const mismatchMsg = `Region mismatch: This spreadsheet is for ${detectedStates.join(", ")}, but the "${region.name}" region covers ${regionStates.join(", ")}. Are you uploading to the wrong region?`;
+        await supabase
+          .from("asc_uploads")
+          .update({ status: "failed", error_message: mismatchMsg })
+          .eq("id", upload.id);
+        return NextResponse.json(
+          { error: mismatchMsg, mismatchType: "region" },
+          { status: 422 }
+        );
+      }
+    }
 
     if (!result.validation.valid) {
       const errorMsg = result.validation.errors.join("; ");

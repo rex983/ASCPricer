@@ -20,6 +20,7 @@ interface UploadResult {
   success?: boolean;
   error?: string;
   errors?: string[];
+  mismatchType?: "size" | "region";
   upload?: {
     id: string;
     filename: string;
@@ -219,7 +220,9 @@ export default function UploadPage() {
                 className={`rounded-lg border p-4 ${
                   result.success
                     ? "border-green-500/50 bg-green-500/5"
-                    : "border-red-500/50 bg-red-500/5"
+                    : result.mismatchType
+                      ? "border-amber-500/50 bg-amber-500/5"
+                      : "border-red-500/50 bg-red-500/5"
                 }`}
               >
                 {result.success && result.upload ? (
@@ -263,11 +266,18 @@ export default function UploadPage() {
                 ) : (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <XCircle className="h-5 w-5 text-red-600" />
-                      <span className="font-medium text-red-700">
-                        {result.error || "Upload failed"}
+                      {result.mismatchType ? (
+                        <AlertTriangle className="h-5 w-5 text-amber-600" />
+                      ) : (
+                        <XCircle className="h-5 w-5 text-red-600" />
+                      )}
+                      <span className={`font-medium ${result.mismatchType ? "text-amber-700" : "text-red-700"}`}>
+                        {result.mismatchType ? "Wrong spreadsheet" : (result.error || "Upload failed")}
                       </span>
                     </div>
+                    {result.mismatchType && (
+                      <p className="text-sm text-amber-700">{result.error}</p>
+                    )}
                     {result.errors && (
                       <ul className="text-sm text-red-600 list-disc list-inside">
                         {result.errors.map((e, i) => (
