@@ -33,11 +33,14 @@ function fmt(n: number): string {
   return "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function PriceLine({ label, value }: { label: string; value: number }) {
+function PriceLine({ label, detail, value }: { label: string; detail?: string; value: number }) {
   if (value === 0) return null;
   return (
     <View style={styles.row}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.label}>
+        {label}
+        {detail ? <Text style={{ color: "#888" }}>  {detail}</Text> : null}
+      </Text>
       <Text>{fmt(value)}</Text>
     </View>
   );
@@ -106,18 +109,33 @@ function QuoteDocument({ quote }: { quote: Quote }) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Price Breakdown</Text>
           <PriceLine label="Base Price" value={p.basePrice} />
-          <PriceLine label="Roof Style" value={p.roofStyle} />
-          <PriceLine label="Leg Height" value={p.legs} />
-          <PriceLine label="Sides" value={p.sides} />
-          <PriceLine label="Ends" value={p.ends} />
-          <PriceLine label="Walk-In Doors" value={p.walkInDoors} />
-          <PriceLine label="Windows" value={p.windows} />
-          <PriceLine label="Roll-Up Doors (Ends)" value={p.rollUpDoorsEnds} />
-          <PriceLine label="Roll-Up Doors (Sides)" value={p.rollUpDoorsSides} />
-          <PriceLine label="Insulation" value={p.insulation} />
-          <PriceLine label="Wainscot" value={p.wainscot} />
-          <PriceLine label="Snow/Wind Engineering" value={p.snowEngineering} />
+          <PriceLine label="Roof Style" detail={c.roofStyle.replace(/_/g, " ")} value={p.roofStyle} />
+          <PriceLine label="Leg Height" detail={`${c.height}'`} value={p.legs} />
+          <PriceLine label="Sides" detail={`${c.sidesCoverage.replace(/_/g, " ")} x${c.sidesQty}`} value={p.sides} />
+          <PriceLine label="Ends" detail={`${c.endType} x${c.endsQty}`} value={p.ends} />
+          <PriceLine label="Walk-In Doors" detail={c.walkInDoorType ? `${c.walkInDoorType} x${c.walkInDoorQty}` : undefined} value={p.walkInDoors} />
+          <PriceLine label="Windows" detail={c.windowType ? `${c.windowType} x${c.windowQty}` : undefined} value={p.windows} />
+          <PriceLine
+            label="Roll-Up Doors (Ends)"
+            detail={[
+              c.rollUpEndSize1 && c.rollUpEndQty1 > 0 ? `${c.rollUpEndSize1} x${c.rollUpEndQty1}` : "",
+              c.rollUpEndSize2 && c.rollUpEndQty2 > 0 ? `${c.rollUpEndSize2} x${c.rollUpEndQty2}` : "",
+            ].filter(Boolean).join(", ") || undefined}
+            value={p.rollUpDoorsEnds}
+          />
+          <PriceLine
+            label="Roll-Up Doors (Sides)"
+            detail={[
+              c.rollUpSideSize1 && c.rollUpSideQty1 > 0 ? `${c.rollUpSideSize1} x${c.rollUpSideQty1}` : "",
+              c.rollUpSideSize2 && c.rollUpSideQty2 > 0 ? `${c.rollUpSideSize2} x${c.rollUpSideQty2}` : "",
+            ].filter(Boolean).join(", ") || undefined}
+            value={p.rollUpDoorsSides}
+          />
+          <PriceLine label="Insulation" detail={c.insulationType !== "none" ? `${c.insulationType} - ${c.insulationScope?.replace(/_/g, " ")}` : undefined} value={p.insulation} />
+          <PriceLine label="Wainscot" detail={c.wainscot && c.wainscot !== "none" ? c.wainscot : undefined} value={p.wainscot} />
+          <PriceLine label="Snow/Wind Engineering" detail={[c.snowLoad, c.windRating ? `${c.windRating} MPH` : ""].filter(Boolean).join(", ") || undefined} value={p.snowEngineering} />
           <PriceLine label="Diagonal Bracing" value={p.diagonalBracing} />
+          <PriceLine label="Anchors" detail={c.anchorType && c.anchorType !== "none" ? c.anchorType.replace(/_/g, " ") : undefined} value={p.anchors} />
           <PriceLine label="Plans" value={p.plans} />
 
           <View style={styles.divider} />
