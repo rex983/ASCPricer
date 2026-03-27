@@ -356,7 +356,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
         <Card>
           <CardContent className="pt-4 pb-3 space-y-3">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Dimensions</p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-5">
               <div className="space-y-1">
                 <Label className="text-xs">Width</Label>
                 <Select value={String(config.width)} onValueChange={(v) => update("width", Number(v))}>
@@ -419,7 +419,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
         <Card>
           <CardContent className="pt-4 pb-3 space-y-3">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Sides & Ends</p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
               <div className="space-y-1">
                 <Label className="text-xs">Side Coverage</Label>
                 <Select
@@ -504,7 +504,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
         <Card>
           <CardContent className="pt-4 pb-3 space-y-3">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Doors & Windows</p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
               <div className="space-y-1">
                 <Label className="text-xs">Walk-In Door</Label>
                 <Select
@@ -682,7 +682,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
         <Card>
           <CardContent className="pt-4 pb-3 space-y-3">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Insulation, Engineering & Tax</p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
               <div className="space-y-1">
                 <Label className="text-xs">Insulation</Label>
                 <Select
@@ -778,7 +778,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
               {!isWidespan && regionStates.length > 0 && (
                 <div className="space-y-1">
                   <Label className="text-xs">State</Label>
