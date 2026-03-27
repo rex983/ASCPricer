@@ -68,8 +68,8 @@ export function readWidespanSnowLoad(ws: WorkSheet): {
     const h = cleanHeader(headers[c]);
 
     // Truss section: lengths 20-200
+    // Header may be "Length" or "Original Trusses" (data in c+1/c+2/c+3)
     if (h === "Length" || h === "length") {
-      // Next columns should have count and spacing
       for (let r = 1; r < Math.min(40, data.length); r++) {
         const row = data[r];
         if (!row) continue;
@@ -82,8 +82,24 @@ export function readWidespanSnowLoad(ws: WorkSheet): {
         }
       }
     }
+    if (h.toLowerCase().includes("original") && h.toLowerCase().includes("truss")) {
+      // "Original Trusses" header: length in c+1, count in c+2, spacing in c+3
+      // Row 0 itself may contain the first data point alongside the header
+      for (let r = 0; r < Math.min(40, data.length); r++) {
+        const row = data[r];
+        if (!row) continue;
+        const length = num(row[c + 1]);
+        if (length >= 20 && length <= 200) {
+          const count = num(row[c + 2]);
+          const spacing = num(row[c + 3]);
+          if (count > 0) trussCountByLength[String(length)] = count;
+          if (spacing > 0) trussSpacingByLength[String(length)] = spacing;
+        }
+      }
+    }
 
     // Verticals section: widths 32-60
+    // Header may be "Width" or "Verticals" (with width data in c+1)
     if (h === "Width" || h === "width") {
       for (let r = 1; r < Math.min(20, data.length); r++) {
         const row = data[r];
@@ -92,6 +108,21 @@ export function readWidespanSnowLoad(ws: WorkSheet): {
         if (width >= 32 && width <= 60) {
           const count = num(row[c + 1]);
           const spacing = num(row[c + 2]);
+          if (count > 0) verticalCountByWidth[String(width)] = count;
+          if (spacing > 0) verticalSpacingByWidth[String(width)] = spacing;
+        }
+      }
+    }
+    if (h.toLowerCase().includes("vertical") && !h.toLowerCase().includes("original")) {
+      // "Verticals" header: width in c+1, count in c+2, spacing in c+3
+      // Start from row 0 — first data point is on the same row as the header
+      for (let r = 0; r < Math.min(20, data.length); r++) {
+        const row = data[r];
+        if (!row) continue;
+        const width = num(row[c + 1]);
+        if (width >= 32 && width <= 60) {
+          const count = num(row[c + 2]);
+          const spacing = num(row[c + 3]);
           if (count > 0) verticalCountByWidth[String(width)] = count;
           if (spacing > 0) verticalSpacingByWidth[String(width)] = spacing;
         }
@@ -212,6 +243,31 @@ export function readWidespanSnowLoad(ws: WorkSheet): {
           originalGirtsByHeight[String(height)] = count;
         }
       }
+    }
+  }
+
+  // Fallback: scan rows 0-3 for "Original Purlins" header (may be in row 1, not row 0)
+  if (Object.keys(originalPurlinByWidth).length === 0) {
+    for (let r = 0; r < Math.min(4, data.length); r++) {
+      const row = data[r];
+      if (!row) continue;
+      for (let c = 30; c < row.length; c++) {
+        const label = cleanHeader(row[c]);
+        if (label.toLowerCase().includes("original") && label.toLowerCase().includes("purlin")) {
+          // Data starts in the next row at the same column
+          for (let dr = r + 1; dr < Math.min(r + 20, data.length); dr++) {
+            const drow = data[dr];
+            if (!drow) continue;
+            const width = num(drow[c]);
+            const count = num(drow[c + 1]);
+            if (width >= 32 && width <= 60 && count > 0) {
+              originalPurlinByWidth[String(width)] = count;
+            }
+          }
+          break;
+        }
+      }
+      if (Object.keys(originalPurlinByWidth).length > 0) break;
     }
   }
 

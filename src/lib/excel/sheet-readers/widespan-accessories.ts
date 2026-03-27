@@ -18,49 +18,34 @@ export function readWidespanDoorsWindows(ws: WorkSheet): {
   const walkInDoors: PricingLookup = {};
   const windows: PricingLookup = {};
 
-  let section: "doors" | "windows" | "unknown" = "unknown";
+  // Sheet layout: walk-in doors (rows 0-~12), then a "Price/Qty/Total" header,
+  // then windows (rows ~18+), then another "Price/Qty/Total" header.
+  // Detect the divider row to switch sections.
+  let section: "doors" | "windows" = "doors";
 
   for (let r = 0; r < Math.min(40, data.length); r++) {
     const row = data[r];
     if (!row) continue;
     const name = cleanHeader(row[0]);
-    if (!name) continue;
 
-    // Detect section switches
-    if (name.toLowerCase().includes("door") && num(row[1]) > 0) {
-      section = "doors";
-    } else if (name.toLowerCase().includes("window") && num(row[1]) > 0) {
-      section = "windows";
-    } else if (name.toLowerCase().includes("window") && !num(row[1])) {
-      section = "windows";
+    // "Price/Qty/Total" header row marks end of a section
+    const hasCalcHeader = row.some(
+      (v: unknown) => typeof v === "string" && v.trim().toLowerCase() === "price"
+    );
+    if (hasCalcHeader) {
+      if (section === "doors") section = "windows";
       continue;
     }
 
+    if (!name) continue;
     const price = num(row[1]);
     if (price <= 0) continue;
-
-    // Skip calculation rows
     if (name.toLowerCase().includes("total") || name.toLowerCase().includes("qty")) continue;
 
-    if (section === "doors" || name.toLowerCase().includes("door") || name.toLowerCase().includes("frame out")) {
+    if (section === "doors") {
       walkInDoors[name] = price;
-    } else if (section === "windows" || name.toLowerCase().includes("window") || name.toLowerCase().includes("pane")) {
+    } else {
       windows[name] = price;
-    }
-  }
-
-  // If Frame Out appears in doors, also add to windows
-  // (both sections have a Frame Out option)
-  if (!windows["Frame Out"] && walkInDoors["Frame Out"]) {
-    // Scan for window frame out separately
-    for (let r = 15; r < Math.min(40, data.length); r++) {
-      const row = data[r];
-      if (!row) continue;
-      const name = cleanHeader(row[0]);
-      if (name === "Frame Out") {
-        windows["Frame Out"] = num(row[1]);
-        break;
-      }
     }
   }
 

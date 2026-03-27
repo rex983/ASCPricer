@@ -172,7 +172,8 @@ export function calculateWidespanPrice(
   const diagonalBracing = 0;
 
   // ── Anchors ──
-  // Spreadsheet: anchor count = (extraTrusses × 8) + (extraVerticals × 2)
+  // Spreadsheet: anchor count = (totalTrusses × 8) + (totalVerticals × 2)
+  // Uses total counts (max of needed vs original), not extras.
   // Anchor types: titen_hd ($15/ea), concrete ($0/ea), or none
   let anchors = 0;
   if (config.anchorType && config.anchorType !== "none") {
@@ -180,7 +181,7 @@ export function calculateWidespanPrice(
     if (anchorCostEach > 0) {
       const anchorCount = Math.max(
         0,
-        engineeringResult.extraTrusses * 8 + engineeringResult.extraVerticals * 2
+        engineeringResult.totalTrusses * 8 + engineeringResult.totalVerticals * 2
       );
       anchors = anchorCount * anchorCostEach;
     }

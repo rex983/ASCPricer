@@ -503,6 +503,10 @@ export interface WidespanEngineeringResult {
   cost: number;
   extraTrusses: number;
   extraVerticals: number;
+  /** Total trusses needed (max of calculated vs original) — used for anchor count */
+  totalTrusses: number;
+  /** Total verticals needed (max of calculated vs original) — used for anchor count */
+  totalVerticals: number;
 }
 
 export function calculateWidespanSnowEngineering(
@@ -510,7 +514,7 @@ export function calculateWidespanSnowEngineering(
   matrices: WidespanMatrices,
   resolvedKeys: { width: number; length: number }
 ): WidespanEngineeringResult {
-  if (!config.snowLoad) return { cost: 0, extraTrusses: 0, extraVerticals: 0 };
+  if (!config.snowLoad) return { cost: 0, extraTrusses: 0, extraVerticals: 0, totalTrusses: 0, totalVerticals: 0 };
 
   const { width, length } = resolvedKeys;
 
@@ -537,6 +541,8 @@ export function calculateWidespanSnowEngineering(
   let totalCost = 0;
   let resultExtraTrusses = 0;
   let resultExtraVerticals = 0;
+  let resultTotalTrusses = 0;
+  let resultTotalVerticals = 0;
 
   // ── Extra Trusses ──
   const trussData = matrices.snow.trussCounts[String(length)];
@@ -550,6 +556,7 @@ export function calculateWidespanSnowEngineering(
     const trussesNeeded = Math.ceil(lengthInches / maxSpacing) - 1;
     const extraTrusses = Math.max(0, trussesNeeded - originalTrusses);
     resultExtraTrusses = extraTrusses;
+    resultTotalTrusses = Math.max(trussesNeeded, originalTrusses);
 
     if (extraTrusses > 0) {
       const trussPrice =
@@ -608,6 +615,8 @@ export function calculateWidespanSnowEngineering(
   }
 
   // ── Extra Verticals ──
+  // Spreadsheet uses FULL width (not half) for vertical count,
+  // and totalHeight (leg + roof rise) for pricing.
   const verticalSpacing = lookupValue(
     matrices.snow.verticalSpacingByWind,
     String(windMain)
@@ -616,16 +625,19 @@ export function calculateWidespanSnowEngineering(
     const originalVerticals =
       lookupValue(matrices.snow.verticalCountByWidth, String(width)) || 0;
 
-    const halfWidth = width / 2;
-    const halfInches = halfWidth * 12;
-    const verticalsNeeded = Math.ceil(halfInches / verticalSpacing) + 1;
-    const totalVerticals = verticalsNeeded * 2; // both sides
+    const widthInches = width * 12;
+    const verticalsNeeded = Math.ceil(widthInches / verticalSpacing) + 1;
 
-    const extraVerticals = Math.max(0, totalVerticals - originalVerticals);
+    const extraVerticals = Math.max(0, verticalsNeeded - originalVerticals);
     resultExtraVerticals = extraVerticals;
+    // Also track total verticals needed (for anchor calculation)
+    resultTotalVerticals = Math.max(verticalsNeeded, originalVerticals);
     if (extraVerticals > 0) {
       const verticalCostPerFt = matrices.snow.verticalCostPerFt || 18;
-      totalCost += extraVerticals * verticalCostPerFt * halfWidth;
+      // Peak height = leg height + roof rise (A-frame pitch: 3:12)
+      const roofRise = Math.ceil((width / 2) * (3 / 12));
+      const totalHeight = config.height + roofRise;
+      totalCost += extraVerticals * verticalCostPerFt * totalHeight;
     }
   }
 
@@ -633,5 +645,7 @@ export function calculateWidespanSnowEngineering(
     cost: Math.round(totalCost),
     extraTrusses: resultExtraTrusses,
     extraVerticals: resultExtraVerticals,
+    totalTrusses: resultTotalTrusses,
+    totalVerticals: resultTotalVerticals,
   };
 }
