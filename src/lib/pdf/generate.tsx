@@ -108,7 +108,7 @@ function QuoteDocument({ quote }: { quote: Quote }) {
         {/* Price Breakdown */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Price Breakdown</Text>
-          <PriceLine label="Base Price" value={p.basePrice} />
+          <PriceLine label="Base Price" detail={`${c.width}x${c.length}`} value={p.basePrice} />
           <PriceLine label="Roof Style" detail={c.roofStyle.replace(/_/g, " ")} value={p.roofStyle} />
           <PriceLine label="Leg Height" detail={`${c.height}'`} value={p.legs} />
           <PriceLine label="Sides" detail={`${c.sidesCoverage.replace(/_/g, " ")} x${c.sidesQty}`} value={p.sides} />
@@ -136,7 +136,6 @@ function QuoteDocument({ quote }: { quote: Quote }) {
           <PriceLine label="Snow/Wind Engineering" detail={[c.snowLoad, c.windRating ? `${c.windRating} MPH` : ""].filter(Boolean).join(", ") || undefined} value={p.snowEngineering} />
           <PriceLine label="Diagonal Bracing" value={p.diagonalBracing} />
           <PriceLine label="Anchors" detail={c.anchorType && c.anchorType !== "none" ? c.anchorType.replace(/_/g, " ") : undefined} value={p.anchors} />
-          <PriceLine label="Plans" value={p.plans} />
 
           <View style={styles.divider} />
 
@@ -157,6 +156,27 @@ function QuoteDocument({ quote }: { quote: Quote }) {
             <Text style={styles.totalValue}>{fmt(p.total)}</Text>
           </View>
         </View>
+
+        {/* Plans & Calculations (separate from building total) */}
+        {(p.plans > 0 || p.calculations > 0) && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Plans &amp; Calculations (separate transaction)</Text>
+            <PriceLine label="Plans" value={p.plans} />
+            <PriceLine label="Calculations" value={p.calculations} />
+            {(p.plans > 0 || p.calculations > 0) && (
+              <>
+                <View style={styles.divider} />
+                <View style={styles.row}>
+                  <Text style={{ fontWeight: "bold" }}>Plans Total</Text>
+                  <Text style={{ fontWeight: "bold" }}>{fmt(p.plans + p.calculations)}</Text>
+                </View>
+              </>
+            )}
+            <Text style={{ color: "#888", fontSize: 8, marginTop: 4 }}>
+              Plans and calculations are billed separately and are not included in the building total above.
+            </Text>
+          </View>
+        )}
 
         {/* Notes */}
         {quote.notes && (
