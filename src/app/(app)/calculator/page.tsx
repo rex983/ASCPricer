@@ -39,15 +39,18 @@ export default function CalculatorPage() {
   const [selectedVersion, setSelectedVersion] = useState<string>("current");
   const [appConfig, setAppConfig] = useState<AppConfig>({});
 
-  // Fetch app config once on mount
+  // Fetch app config — re-fetches when region or type changes to get scoped values
   useEffect(() => {
-    fetch("/api/admin/config")
+    const params = new URLSearchParams();
+    if (selectedRegion) params.set("regionId", selectedRegion);
+    if (spreadsheetType) params.set("spreadsheetType", spreadsheetType);
+    fetch(`/api/admin/config?${params}`)
       .then((r) => r.json())
       .then((data) => {
         if (data && typeof data === "object" && !data.error) setAppConfig(data);
       })
       .catch(() => {});
-  }, []);
+  }, [selectedRegion, spreadsheetType]);
 
   // Fetch regions when type changes
   useEffect(() => {

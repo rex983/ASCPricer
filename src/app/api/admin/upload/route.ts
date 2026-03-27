@@ -15,7 +15,8 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 async function syncConfigFromMatrices(
   supabase: ReturnType<typeof createAdminClient>,
   matrices: PricingMatrices,
-  type: SpreadsheetType
+  type: SpreadsheetType,
+  regionId: string
 ) {
   const updates: { key: string; value: unknown }[] = [];
 
@@ -71,16 +72,17 @@ async function syncConfigFromMatrices(
     }
   }
 
-  // Upsert all config keys in parallel
-  const now = new Date().toISOString();
+  // Upsert scoped config (per region + type) using the RPC function
+  // that handles NULL-safe uniqueness via IS NOT DISTINCT FROM
   await Promise.all(
     updates.map(({ key, value }) =>
-      supabase
-        .from("asc_app_config")
-        .upsert(
-          { key, value, updated_at: now, updated_by: "system:upload" },
-          { onConflict: "key" }
-        )
+      supabase.rpc("upsert_scoped_config", {
+        p_key: key,
+        p_value: value,
+        p_region_id: regionId,
+        p_spreadsheet_type: type,
+        p_updated_by: "system:upload",
+      })
     )
   );
 }
@@ -224,7 +226,7 @@ export async function POST(req: NextRequest) {
       .eq("id", upload.id);
 
     // Auto-detect config changes from parsed matrices and update asc_app_config
-    await syncConfigFromMatrices(supabase, result.matrices, result.detection.type);
+    await syncConfigFromMatrices(supabase, result.matrices, result.detection.type, regionId);
 
     // Log successful upload to audit trail
     await logAudit({
