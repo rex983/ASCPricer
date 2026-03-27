@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { AppHeader } from "@/components/layout/app-header";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+// Card/CardContent no longer used — regions are flat rows
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
@@ -203,14 +203,11 @@ export default function RegionsPage() {
     <>
       <AppHeader title="Regions" />
       <div className="flex-1 p-6">
-        <div className="mx-auto max-w-4xl space-y-6">
+        <div className="mx-auto max-w-4xl space-y-4">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold">Region Management</h2>
-              <p className="text-sm text-muted-foreground">
-                Add, edit, and toggle regions. Each region+size combo is a separate entry.
-              </p>
+              <h2 className="text-base font-semibold">Region Management</h2>
             </div>
             <Button onClick={openCreate}>
               <Plus className="mr-2 h-4 w-4" />
@@ -225,9 +222,9 @@ export default function RegionsPage() {
           ) : (
             <>
               {/* Standard Regions */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <Building2 className="h-4 w-4" />
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  <Building2 className="h-3.5 w-3.5" />
                   Standard (12&apos;–30&apos;)
                   <Badge variant="secondary">{standardRegions.length}</Badge>
                 </div>
@@ -236,7 +233,7 @@ export default function RegionsPage() {
                     No standard regions yet
                   </div>
                 ) : (
-                  <div className="grid gap-3">
+                  <div className="grid gap-1.5">
                     {standardRegions.map((r) => (
                       <RegionCard
                         key={r.id}
@@ -252,9 +249,9 @@ export default function RegionsPage() {
               </div>
 
               {/* Widespan Regions */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <Warehouse className="h-4 w-4" />
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  <Warehouse className="h-3.5 w-3.5" />
                   Widespan (32&apos;–60&apos;)
                   <Badge variant="secondary">{widespanRegions.length}</Badge>
                 </div>
@@ -263,7 +260,7 @@ export default function RegionsPage() {
                     No widespan regions yet
                   </div>
                 ) : (
-                  <div className="grid gap-3">
+                  <div className="grid gap-1.5">
                     {widespanRegions.map((r) => (
                       <RegionCard
                         key={r.id}
@@ -419,73 +416,39 @@ function RegionCard({
   onDelete: () => void;
 }) {
   return (
-    <Card className={!region.is_active ? "opacity-60" : undefined}>
-      <CardContent className="flex items-center gap-4 py-3 px-4">
-        {/* Toggle */}
-        <div className="flex items-center gap-2">
-          {toggling ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Switch
-              checked={region.is_active}
-              onCheckedChange={onToggle}
-              aria-label={`Toggle ${region.name}`}
-            />
-          )}
-        </div>
-
-        {/* Info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-medium truncate">{region.name}</span>
-            {!region.is_active && (
-              <Badge variant="outline" className="text-muted-foreground">
-                Inactive
-              </Badge>
-            )}
-          </div>
-          <div className="flex items-center gap-2 mt-0.5">
-            <div className="flex flex-wrap gap-1">
-              {region.states.map((s) => (
-                <Badge key={s} variant="secondary" className="text-xs">
-                  {s}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Pricing status */}
-        <div className="text-right text-xs text-muted-foreground shrink-0">
-          {region.currentPricing ? (
-            <div className="flex items-center gap-1">
-              <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
-              <span>
-                v{region.currentPricing.version} &mdash;{" "}
-                {new Date(region.currentPricing.uploadedAt).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                })}
-              </span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1">
-              <XCircle className="h-3.5 w-3.5 text-muted-foreground" />
-              <span>No pricing</span>
-            </div>
-          )}
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-1 shrink-0">
-          <Button variant="ghost" size="icon" onClick={onEdit}>
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" onClick={onDelete}>
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+    <div className={`flex items-center gap-3 rounded-md border px-3 py-1.5 text-sm ${!region.is_active ? "opacity-50" : ""}`}>
+      {toggling ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+      ) : (
+        <Switch
+          checked={region.is_active}
+          onCheckedChange={onToggle}
+          aria-label={`Toggle ${region.name}`}
+          className="scale-90"
+        />
+      )}
+      <span className="font-medium truncate min-w-0">{region.name}</span>
+      <div className="flex gap-0.5 shrink-0">
+        {region.states.map((s) => (
+          <span key={s} className="rounded bg-muted px-1 py-0.5 text-[10px] font-mono text-muted-foreground">{s}</span>
+        ))}
+      </div>
+      <div className="ml-auto flex items-center gap-2 shrink-0">
+        {region.currentPricing ? (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <CheckCircle2 className="h-3 w-3 text-green-600" />
+            v{region.currentPricing.version}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">No pricing</span>
+        )}
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onDelete}>
+          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+        </Button>
+      </div>
+    </div>
   );
 }

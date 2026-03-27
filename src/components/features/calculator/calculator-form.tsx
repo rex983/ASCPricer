@@ -349,247 +349,164 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
   }, [breakdown, regionId, config, customerForm, customerMode, selectedCustomer, quoteNotes, session, router]);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+    <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
       {/* Left: Form */}
-      <div className="space-y-6">
-        {/* ── Dimensions ── */}
+      <div className="space-y-4">
+        {/* ── Dimensions + Roof/Sheet Metal ── */}
         <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-base">Dimensions</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <div className="space-y-2">
-              <Label>Width</Label>
-              <Select
-                value={String(config.width)}
-                onValueChange={(v) => update("width", Number(v))}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {widths.map((w) => (
-                    <SelectItem key={w} value={String(w)}>{w}&apos;</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Length (ft)</Label>
-              <Input
-                type="number"
-                min={20}
-                max={isWidespan ? 200 : 100}
-                step={1}
-                value={config.length}
-                onChange={(e) => update("length", Number(e.target.value))}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Height (ft)</Label>
-              <Input
-                type="number"
-                min={minHeight}
-                max={maxHeight}
-                step={1}
-                value={config.height}
-                onChange={(e) => update("height", Number(e.target.value))}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Gauge</Label>
-              <Select
-                value={String(config.gauge)}
-                onValueChange={(v) => update("gauge", Number(v) as 12 | 14)}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {gaugeOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* ── Roof & Sheet Metal ── */}
-        <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-base">
-              {isWidespan ? "Sheet Metal" : "Roof Style"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4">
-            {!isWidespan && (
-              <div className="space-y-2">
-                <Label>Roof Style</Label>
-                <Select
-                  value={config.roofStyle}
-                  onValueChange={(v) => update("roofStyle", v as BuildingConfig["roofStyle"])}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+          <CardContent className="pt-4 pb-3 space-y-3">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Dimensions</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+              <div className="space-y-1">
+                <Label className="text-xs">Width</Label>
+                <Select value={String(config.width)} onValueChange={(v) => update("width", Number(v))}>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {roofOptions.map((opt) => (
+                    {widths.map((w) => (
+                      <SelectItem key={w} value={String(w)}>{w}&apos;</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Length</Label>
+                <Input className="h-8 text-sm" type="number" min={20} max={isWidespan ? 200 : 100} step={1}
+                  value={config.length} onChange={(e) => update("length", Number(e.target.value))} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Height</Label>
+                <Input className="h-8 text-sm" type="number" min={minHeight} max={maxHeight} step={1}
+                  value={config.height} onChange={(e) => update("height", Number(e.target.value))} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Gauge</Label>
+                <Select value={String(config.gauge)} onValueChange={(v) => update("gauge", Number(v) as 12 | 14)}>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {gaugeOptions.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-            )}
-
-            {isWidespan && (
-              <div className="space-y-2">
-                <Label>Sheet Metal</Label>
-                <Select
-                  value={config.sheetMetal || "29g_agg"}
-                  onValueChange={(v) => update("sheetMetal", v as BuildingConfig["sheetMetal"])}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {sheetMetalOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* ── Sides ── */}
-        <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-base">Sides</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-            <div className="space-y-2">
-              <Label>Coverage</Label>
-              <Select
-                value={config.sidesCoverage === "open" ? "open" : config.sidesCoverage === "fully_enclosed" ? "fully_enclosed" : config.sidesCoverage}
-                onValueChange={handleSidesCoverage}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {sideCoverageOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {config.sidesCoverage !== "open" && (
-              <>
-                <div className="space-y-2">
-                  <Label>Number of Sides</Label>
-                  <Select
-                    value={String(config.sidesQty)}
-                    onValueChange={(v) => update("sidesQty", Number(v) as 0 | 1 | 2)}
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+              <div className="space-y-1">
+                <Label className="text-xs">{isWidespan ? "Sheet Metal" : "Roof Style"}</Label>
+                {isWidespan ? (
+                  <Select value={config.sheetMetal || "29g_agg"} onValueChange={(v) => update("sheetMetal", v as BuildingConfig["sheetMetal"])}>
+                    <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1">1 Side</SelectItem>
-                      <SelectItem value="2">2 Sides</SelectItem>
+                      {sheetMetalOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Select value={config.roofStyle} onValueChange={(v) => update("roofStyle", v as BuildingConfig["roofStyle"])}>
+                    <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {roofOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ── Sides & Ends ── */}
+        <Card>
+          <CardContent className="pt-4 pb-3 space-y-3">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Sides & Ends</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
+              <div className="space-y-1">
+                <Label className="text-xs">Side Coverage</Label>
+                <Select
+                  value={config.sidesCoverage === "open" ? "open" : config.sidesCoverage === "fully_enclosed" ? "fully_enclosed" : config.sidesCoverage}
+                  onValueChange={handleSidesCoverage}
+                >
+                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {sideCoverageOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {config.sidesCoverage !== "open" && (
+                <div className="space-y-1">
+                  <Label className="text-xs"># Sides</Label>
+                  <Select value={String(config.sidesQty)} onValueChange={(v) => update("sidesQty", Number(v) as 0 | 1 | 2)}>
+                    <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1</SelectItem>
+                      <SelectItem value="2">2</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-
-                {!isWidespan && (
-                  <div className="space-y-2">
-                    <Label>Panel Orientation</Label>
-                    <Select
-                      value={config.sidesOrientation}
-                      onValueChange={(v) => update("sidesOrientation", v as "horizontal" | "vertical")}
-                    >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {orientationOptions.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* ── Ends ── */}
-        <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-base">Ends</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-            <div className="space-y-2">
-              <Label>Number of Ends</Label>
-              <Select
-                value={String(config.endsQty)}
-                onValueChange={(v) => {
-                  const qty = Number(v) as 0 | 1 | 2;
-                  update("endsQty", qty);
-                }}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0">None</SelectItem>
-                  <SelectItem value="1">1 End</SelectItem>
-                  <SelectItem value="2">2 Ends</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {config.endsQty > 0 && (
-              <>
-                <div className="space-y-2">
-                  <Label>End Type</Label>
-                  <Select
-                    value={config.endType}
-                    onValueChange={handleEndType}
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+              )}
+              {config.sidesCoverage !== "open" && !isWidespan && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Side Panel</Label>
+                  <Select value={config.sidesOrientation} onValueChange={(v) => update("sidesOrientation", v as "horizontal" | "vertical")}>
+                    <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {endTypeOptions.filter(
-                        (opt) => isWidespan ? opt.value !== "extended_gable" : true
-                      ).map((opt) => (
+                      {orientationOptions.map((opt) => (
                         <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-
-                {!isWidespan && (
-                  <div className="space-y-2">
-                    <Label>Panel Orientation</Label>
-                    <Select
-                      value={config.endsOrientation}
-                      onValueChange={(v) => update("endsOrientation", v as "horizontal" | "vertical")}
-                    >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {orientationOptions.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </>
-            )}
+              )}
+              <div className="space-y-1">
+                <Label className="text-xs"># Ends</Label>
+                <Select value={String(config.endsQty)} onValueChange={(v) => update("endsQty", Number(v) as 0 | 1 | 2)}>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">None</SelectItem>
+                    <SelectItem value="1">1</SelectItem>
+                    <SelectItem value="2">2</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {config.endsQty > 0 && (
+                <div className="space-y-1">
+                  <Label className="text-xs">End Type</Label>
+                  <Select value={config.endType} onValueChange={handleEndType}>
+                    <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {endTypeOptions.filter((opt) => isWidespan ? opt.value !== "extended_gable" : true).map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {config.endsQty > 0 && !isWidespan && (
+                <div className="space-y-1">
+                  <Label className="text-xs">End Panel</Label>
+                  <Select value={config.endsOrientation} onValueChange={(v) => update("endsOrientation", v as "horizontal" | "vertical")}>
+                    <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {orientationOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
         {/* ── Doors & Windows ── */}
         <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-base">Doors & Windows</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Walk-In Doors */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Walk-In Door</Label>
+          <CardContent className="pt-4 pb-3 space-y-3">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Doors & Windows</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="space-y-1">
+                <Label className="text-xs">Walk-In Door</Label>
                 <Select
                   value={config.walkInDoorType || "__none__"}
                   onValueChange={(v) => {
@@ -601,7 +518,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                     }));
                   }}
                 >
-                  <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="None" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">None</SelectItem>
                     {doors.map((d) => (
@@ -611,23 +528,14 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                 </Select>
               </div>
               {config.walkInDoorType && (
-                <div className="space-y-2">
-                  <Label>Qty</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={10}
-                    value={config.walkInDoorQty}
-                    onChange={(e) => update("walkInDoorQty", Number(e.target.value))}
-                  />
+                <div className="space-y-1">
+                  <Label className="text-xs">Door Qty</Label>
+                  <Input className="h-8 text-sm" type="number" min={1} max={10}
+                    value={config.walkInDoorQty} onChange={(e) => update("walkInDoorQty", Number(e.target.value))} />
                 </div>
               )}
-            </div>
-
-            {/* Windows */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Window</Label>
+              <div className="space-y-1">
+                <Label className="text-xs">Window</Label>
                 <Select
                   value={config.windowType || "__none__"}
                   onValueChange={(v) => {
@@ -639,7 +547,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                     }));
                   }}
                 >
-                  <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="None" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">None</SelectItem>
                     {windows.map((w) => (
@@ -649,23 +557,19 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                 </Select>
               </div>
               {config.windowType && (
-                <div className="space-y-2">
-                  <Label>Qty</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={20}
-                    value={config.windowQty}
-                    onChange={(e) => update("windowQty", Number(e.target.value))}
-                  />
+                <div className="space-y-1">
+                  <Label className="text-xs">Win Qty</Label>
+                  <Input className="h-8 text-sm" type="number" min={1} max={20}
+                    value={config.windowQty} onChange={(e) => update("windowQty", Number(e.target.value))} />
                 </div>
               )}
             </div>
 
-            {/* Roll-Up Doors (Ends) — 2 slots */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Roll-Up Doors (Ends)</Label>
-              <div className="grid grid-cols-[1fr_80px] gap-2">
+            {/* Roll-Up Doors */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Roll-Up Doors (Ends)</Label>
+              <div className="grid grid-cols-[1fr_60px] gap-1.5">
                 <Select
                   value={config.rollUpEndSize1 || "__none__"}
                   onValueChange={(v) => {
@@ -677,7 +581,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                     }));
                   }}
                 >
-                  <SelectTrigger><SelectValue placeholder="Size" /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Size" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">None</SelectItem>
                     {rollUpEnds.map((r) => (
@@ -686,11 +590,11 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                   </SelectContent>
                 </Select>
                 {config.rollUpEndSize1 ? (
-                  <Input type="number" min={1} max={10} value={config.rollUpEndQty1}
+                  <Input className="h-8 text-sm" type="number" min={1} max={10} value={config.rollUpEndQty1}
                     onChange={(e) => update("rollUpEndQty1", Number(e.target.value))} />
                 ) : <div />}
               </div>
-              <div className="grid grid-cols-[1fr_80px] gap-2">
+              <div className="grid grid-cols-[1fr_60px] gap-1.5">
                 <Select
                   value={config.rollUpEndSize2 || "__none__"}
                   onValueChange={(v) => {
@@ -702,7 +606,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                     }));
                   }}
                 >
-                  <SelectTrigger><SelectValue placeholder="Size" /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Size" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">None</SelectItem>
                     {rollUpEnds.map((r) => (
@@ -711,16 +615,15 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                   </SelectContent>
                 </Select>
                 {config.rollUpEndSize2 ? (
-                  <Input type="number" min={1} max={10} value={config.rollUpEndQty2}
+                  <Input className="h-8 text-sm" type="number" min={1} max={10} value={config.rollUpEndQty2}
                     onChange={(e) => update("rollUpEndQty2", Number(e.target.value))} />
                 ) : <div />}
               </div>
             </div>
 
-            {/* Roll-Up Doors (Sides) — 2 slots */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Roll-Up Doors (Sides)</Label>
-              <div className="grid grid-cols-[1fr_80px] gap-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Roll-Up Doors (Sides)</Label>
+              <div className="grid grid-cols-[1fr_60px] gap-1.5">
                 <Select
                   value={config.rollUpSideSize1 || "__none__"}
                   onValueChange={(v) => {
@@ -732,7 +635,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                     }));
                   }}
                 >
-                  <SelectTrigger><SelectValue placeholder="Size" /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Size" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">None</SelectItem>
                     {rollUpSides.map((r) => (
@@ -741,11 +644,11 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                   </SelectContent>
                 </Select>
                 {config.rollUpSideSize1 ? (
-                  <Input type="number" min={1} max={10} value={config.rollUpSideQty1}
+                  <Input className="h-8 text-sm" type="number" min={1} max={10} value={config.rollUpSideQty1}
                     onChange={(e) => update("rollUpSideQty1", Number(e.target.value))} />
                 ) : <div />}
               </div>
-              <div className="grid grid-cols-[1fr_80px] gap-2">
+              <div className="grid grid-cols-[1fr_60px] gap-1.5">
                 <Select
                   value={config.rollUpSideSize2 || "__none__"}
                   onValueChange={(v) => {
@@ -757,7 +660,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                     }));
                   }}
                 >
-                  <SelectTrigger><SelectValue placeholder="Size" /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Size" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">None</SelectItem>
                     {rollUpSides.map((r) => (
@@ -766,25 +669,22 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                   </SelectContent>
                 </Select>
                 {config.rollUpSideSize2 ? (
-                  <Input type="number" min={1} max={10} value={config.rollUpSideQty2}
+                  <Input className="h-8 text-sm" type="number" min={1} max={10} value={config.rollUpSideQty2}
                     onChange={(e) => update("rollUpSideQty2", Number(e.target.value))} />
                 ) : <div />}
+              </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* ── Insulation & Wainscot ── */}
+        {/* ── Insulation, Engineering & Tax ── */}
         <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-base">
-              {isWidespan ? "Insulation & Wainscot" : "Insulation"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-              <div className="space-y-2">
-                <Label>Type</Label>
+          <CardContent className="pt-4 pb-3 space-y-3">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Insulation, Engineering & Tax</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
+              <div className="space-y-1">
+                <Label className="text-xs">Insulation</Label>
                 <Select
                   value={config.insulationType}
                   onValueChange={(v) => {
@@ -796,7 +696,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                     }));
                   }}
                 >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {insulationTypes.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
@@ -811,13 +711,13 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                   && config.sidesOrientation === "vertical"
                   && config.endsOrientation === "vertical";
                 return (
-                  <div className="space-y-2">
-                    <Label>Scope</Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Scope</Label>
                     <Select
                       value={config.insulationScope}
                       onValueChange={(v) => update("insulationScope", v as BuildingConfig["insulationScope"])}
                     >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {insulationScopes.map((opt) => (
                           <SelectItem
@@ -833,25 +733,15 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                         ))}
                       </SelectContent>
                     </Select>
-                    {!allVertical && config.insulationScope !== "none" && (
-                      <p className="text-xs text-muted-foreground">
-                        {!isAFV
-                          ? "Insulation requires A-Frame Vertical roof"
-                          : "Fully Insulated requires all vertical panels"}
-                      </p>
-                    )}
                   </div>
                 );
               })()}
 
               {isWidespan && (
-                <div className="space-y-2">
-                  <Label>Wainscot</Label>
-                  <Select
-                    value={config.wainscot || "none"}
-                    onValueChange={(v) => update("wainscot", v as BuildingConfig["wainscot"])}
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                <div className="space-y-1">
+                  <Label className="text-xs">Wainscot</Label>
+                  <Select value={config.wainscot || "none"} onValueChange={(v) => update("wainscot", v as BuildingConfig["wainscot"])}>
+                    <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {wainscotOptions.map((opt) => (
                         <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
@@ -860,43 +750,40 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                   </Select>
                 </div>
               )}
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* ── Engineering & Tax ── */}
-        <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-base">Engineering & Tax</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <div className="space-y-2">
-                <Label>Snow Load</Label>
-                <Select
-                  value={config.snowLoad || "__none__"}
-                  onValueChange={(v) => update("snowLoad", v === "__none__" ? undefined : v)}
-                >
-                  <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+              <div className="space-y-1">
+                <Label className="text-xs">Snow Load</Label>
+                <Select value={config.snowLoad || "__none__"} onValueChange={(v) => update("snowLoad", v === "__none__" ? undefined : v)}>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="None" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">None</SelectItem>
                     {snowLoadOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
+              <div className="space-y-1">
+                <Label className="text-xs">Wind (MPH)</Label>
+                <Input className="h-8 text-sm" type="number" min={90} max={180} step={5}
+                  value={config.windRating} onChange={(e) => update("windRating", Number(e.target.value))} />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs">Tax (%)</Label>
+                <Input className="h-8 text-sm" type="number" min={0} max={15} step={0.01}
+                  value={Number((config.taxRate * 100).toFixed(4))}
+                  onChange={(e) => update("taxRate", Number(e.target.value) / 100)} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
               {!isWidespan && regionStates.length > 0 && (
-                <div className="space-y-2">
-                  <Label>State</Label>
-                  <Select
-                    value={config.state || "__none__"}
-                    onValueChange={(v) => update("state", v === "__none__" ? undefined : v)}
-                  >
-                    <SelectTrigger><SelectValue placeholder="Select state" /></SelectTrigger>
+                <div className="space-y-1">
+                  <Label className="text-xs">State</Label>
+                  <Select value={config.state || "__none__"} onValueChange={(v) => update("state", v === "__none__" ? undefined : v)}>
+                    <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="State" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__none__">None</SelectItem>
                       {regionStates.map((st) => (
@@ -907,55 +794,26 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                 </div>
               )}
 
-              <div className="space-y-2">
-                <Label>Wind Rating (MPH)</Label>
-                <Input
-                  type="number"
-                  min={90}
-                  max={180}
-                  step={5}
-                  value={config.windRating}
-                  onChange={(e) => update("windRating", Number(e.target.value))}
-                />
-              </div>
+              {isWidespan && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Anchors</Label>
+                  <Select value={config.anchorType || "none"} onValueChange={(v) => update("anchorType", v)}>
+                    <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      <SelectItem value="titen_hd">Titen HD Concrete Screws</SelectItem>
+                      <SelectItem value="concrete">Concrete Anchors</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
-              <div className="space-y-2">
-                <Label>Tax Rate (%)</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={15}
-                  step={0.01}
-                  value={Number((config.taxRate * 100).toFixed(4))}
-                  onChange={(e) => update("taxRate", Number(e.target.value) / 100)}
-                />
-              </div>
-            </div>
-
-            {isWidespan && (
-              <div className="space-y-2">
-                <Label>Anchors</Label>
-                <Select
-                  value={config.anchorType || "none"}
-                  onValueChange={(v) => update("anchorType", v)}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    <SelectItem value="titen_hd">Titen HD Concrete Screws</SelectItem>
-                    <SelectItem value="concrete">Concrete Anchors</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 pt-4">
                 <Switch
                   checked={config.includePlans ?? false}
                   onCheckedChange={(v) => update("includePlans", v)}
                 />
-                <Label>Include Plans</Label>
+                <Label className="text-xs">Include Plans</Label>
               </div>
             </div>
           </CardContent>
@@ -963,9 +821,9 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
       </div>
 
       {/* Right: Price Summary (sticky) */}
-      <div className="lg:sticky lg:top-6 lg:self-start space-y-3">
+      <div className="lg:sticky lg:top-4 lg:self-start space-y-3">
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4">
             <PriceSummary breakdown={breakdown} isWidespan={isWidespan} disclaimers={disclaimers} />
             {breakdown && (
               <>
