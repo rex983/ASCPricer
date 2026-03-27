@@ -352,6 +352,41 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
     <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
       {/* Left: Form */}
       <div className="space-y-4">
+        {/* ── Tax, State & Plans (top bar) ── */}
+        <Card>
+          <CardContent className="pt-3 pb-3">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+              <div className="flex items-center gap-2">
+                <Label className="text-xs whitespace-nowrap">Tax (%)</Label>
+                <Input className="h-8 text-sm w-20" type="number" min={0} max={15} step={0.01}
+                  value={Number((config.taxRate * 100).toFixed(4))}
+                  onChange={(e) => update("taxRate", Number(e.target.value) / 100)} />
+              </div>
+              {!isWidespan && regionStates.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs">State</Label>
+                  <Select value={config.state || "__none__"} onValueChange={(v) => update("state", v === "__none__" ? undefined : v)}>
+                    <SelectTrigger className="h-8 text-sm w-24"><SelectValue placeholder="State" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      {regionStates.map((st) => (
+                        <SelectItem key={st} value={st}>{st}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={config.includePlans ?? false}
+                  onCheckedChange={(v) => update("includePlans", v)}
+                />
+                <Label className="text-xs">Include Plans</Label>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* ── Dimensions + Roof/Sheet Metal ── */}
         <Card>
           <CardContent className="pt-4 pb-3 space-y-3">
@@ -529,13 +564,6 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                   </SelectContent>
                 </Select>
               </div>
-              {config.walkInDoorType && (
-                <div className="space-y-1">
-                  <Label className="text-xs">Door Qty</Label>
-                  <Input className="h-8 text-sm" type="number" min={1} max={10}
-                    value={config.walkInDoorQty} onChange={(e) => update("walkInDoorQty", Number(e.target.value))} />
-                </div>
-              )}
               <div className="space-y-1">
                 <Label className="text-xs">Window</Label>
                 <Select
@@ -558,9 +586,17 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                   </SelectContent>
                 </Select>
               </div>
+              <div />
+              {config.walkInDoorType && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Door Qty</Label>
+                  <Input className="h-8 text-sm" type="number" min={1} max={10}
+                    value={config.walkInDoorQty} onChange={(e) => update("walkInDoorQty", Number(e.target.value))} />
+                </div>
+              )}
               {config.windowType && (
                 <div className="space-y-1">
-                  <Label className="text-xs">Win Qty</Label>
+                  <Label className="text-xs">Window Qty</Label>
                   <Input className="h-8 text-sm" type="number" min={1} max={20}
                     value={config.windowQty} onChange={(e) => update("windowQty", Number(e.target.value))} />
                 </div>
@@ -680,10 +716,10 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
           </CardContent>
         </Card>
 
-        {/* ── Insulation, Engineering & Tax ── */}
+        {/* ── Insulation & Engineering ── */}
         <Card>
           <CardContent className="pt-4 pb-3 space-y-3">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Insulation, Engineering & Tax</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Insulation & Engineering</p>
             <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
               <div className="space-y-1">
                 <Label className="text-xs">Insulation</Label>
@@ -772,30 +808,6 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                   value={config.windRating} onChange={(e) => update("windRating", Number(e.target.value))} />
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-xs">Tax (%)</Label>
-                <Input className="h-8 text-sm" type="number" min={0} max={15} step={0.01}
-                  value={Number((config.taxRate * 100).toFixed(4))}
-                  onChange={(e) => update("taxRate", Number(e.target.value) / 100)} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
-              {!isWidespan && regionStates.length > 0 && (
-                <div className="space-y-1">
-                  <Label className="text-xs">State</Label>
-                  <Select value={config.state || "__none__"} onValueChange={(v) => update("state", v === "__none__" ? undefined : v)}>
-                    <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="State" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">None</SelectItem>
-                      {regionStates.map((st) => (
-                        <SelectItem key={st} value={st}>{st}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
               {isWidespan && (
                 <div className="space-y-1">
                   <Label className="text-xs">Anchors</Label>
@@ -809,14 +821,6 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                   </Select>
                 </div>
               )}
-
-              <div className="flex items-center gap-2 pt-4">
-                <Switch
-                  checked={config.includePlans ?? false}
-                  onCheckedChange={(v) => update("includePlans", v)}
-                />
-                <Label className="text-xs">Include Plans</Label>
-              </div>
             </div>
           </CardContent>
         </Card>
