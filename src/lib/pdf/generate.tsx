@@ -133,7 +133,7 @@ function QuoteDocument({ quote }: { quote: Quote }) {
           />
           <PriceLine label="Insulation" detail={c.insulationType !== "none" ? `${c.insulationType} - ${c.insulationScope?.replace(/_/g, " ")}` : undefined} value={p.insulation} />
           <PriceLine label="Wainscot" detail={c.wainscot && c.wainscot !== "none" ? c.wainscot : undefined} value={p.wainscot} />
-          <PriceLine label="Snow/Wind Engineering" detail={[c.snowLoad ? c.snowLoad.replace(/^(\d+)/, "$1 psf") : "", c.windRating ? `${c.windRating} MPH` : ""].filter(Boolean).join(", ") || undefined} value={p.snowEngineering} />
+          <PriceLine label="Snow/Wind Engineering" detail={[c.snowLoad ? c.snowLoad.replace(/^(\d+)\s*/, "$1 psf ") : "", c.windRating ? `${c.windRating} MPH` : ""].filter(Boolean).join(", ") || undefined} value={p.snowEngineering} />
           <PriceLine label="Diagonal Bracing" value={p.diagonalBracing} />
           <PriceLine label="Anchors" detail={c.anchorType && c.anchorType !== "none" ? c.anchorType.replace(/_/g, " ") : undefined} value={p.anchors} />
 
