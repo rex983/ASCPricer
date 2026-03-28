@@ -541,66 +541,63 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
         <Card>
           <CardContent className="pt-4 pb-3 space-y-3">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Doors & Windows</p>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
-              <div className="space-y-1">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
                 <Label className="text-xs">Walk-In Door</Label>
-                <Select
-                  value={config.walkInDoorType || "__none__"}
-                  onValueChange={(v) => {
-                    const val = v === "__none__" ? undefined : v;
-                    setConfig((prev) => ({
-                      ...prev,
-                      walkInDoorType: val,
-                      walkInDoorQty: val ? Math.max(1, prev.walkInDoorQty) : 0,
-                    }));
-                  }}
-                >
-                  <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="None" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">None</SelectItem>
-                    {doors.map((d) => (
-                      <SelectItem key={d} value={d}>{d}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="grid grid-cols-[1fr_60px] gap-1.5">
+                  <Select
+                    value={config.walkInDoorType || "__none__"}
+                    onValueChange={(v) => {
+                      const val = v === "__none__" ? undefined : v;
+                      setConfig((prev) => ({
+                        ...prev,
+                        walkInDoorType: val,
+                        walkInDoorQty: val ? Math.max(1, prev.walkInDoorQty) : 0,
+                      }));
+                    }}
+                  >
+                    <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="None" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      {doors.map((d) => (
+                        <SelectItem key={d} value={d}>{d}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {config.walkInDoorType ? (
+                    <Input className="h-8 text-sm" type="number" min={1} max={10}
+                      value={config.walkInDoorQty} onChange={(e) => update("walkInDoorQty", Number(e.target.value))} />
+                  ) : <div />}
+                </div>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <Label className="text-xs">Window</Label>
-                <Select
-                  value={config.windowType || "__none__"}
-                  onValueChange={(v) => {
-                    const val = v === "__none__" ? undefined : v;
-                    setConfig((prev) => ({
-                      ...prev,
-                      windowType: val,
-                      windowQty: val ? Math.max(1, prev.windowQty) : 0,
-                    }));
-                  }}
-                >
-                  <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="None" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">None</SelectItem>
-                    {windows.map((w) => (
-                      <SelectItem key={w} value={w}>{w}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="grid grid-cols-[1fr_60px] gap-1.5">
+                  <Select
+                    value={config.windowType || "__none__"}
+                    onValueChange={(v) => {
+                      const val = v === "__none__" ? undefined : v;
+                      setConfig((prev) => ({
+                        ...prev,
+                        windowType: val,
+                        windowQty: val ? Math.max(1, prev.windowQty) : 0,
+                      }));
+                    }}
+                  >
+                    <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="None" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      {windows.map((w) => (
+                        <SelectItem key={w} value={w}>{w}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {config.windowType ? (
+                    <Input className="h-8 text-sm" type="number" min={1} max={20}
+                      value={config.windowQty} onChange={(e) => update("windowQty", Number(e.target.value))} />
+                  ) : <div />}
+                </div>
               </div>
-              <div />
-              {config.walkInDoorType && (
-                <div className="space-y-1">
-                  <Label className="text-xs">Door Qty</Label>
-                  <Input className="h-8 text-sm" type="number" min={1} max={10}
-                    value={config.walkInDoorQty} onChange={(e) => update("walkInDoorQty", Number(e.target.value))} />
-                </div>
-              )}
-              {config.windowType && (
-                <div className="space-y-1">
-                  <Label className="text-xs">Window Qty</Label>
-                  <Input className="h-8 text-sm" type="number" min={1} max={20}
-                    value={config.windowQty} onChange={(e) => update("windowQty", Number(e.target.value))} />
-                </div>
-              )}
             </div>
 
             {/* Roll-Up Doors */}
