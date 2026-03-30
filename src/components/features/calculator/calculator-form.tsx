@@ -454,7 +454,8 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
         <Card>
           <CardContent className="pt-4 pb-3 space-y-3">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Sides & Ends</p>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
+            {/* Sides row */}
+            <div className="grid grid-cols-3 gap-x-4 gap-y-3">
               <div className="space-y-1">
                 <Label className="text-xs">Side Coverage</Label>
                 <Select
@@ -494,21 +495,9 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                   </Select>
                 </div>
               )}
-              {config.endsQty > 0 ? (
-                <div className="space-y-1">
-                  <Label className="text-xs">End Type</Label>
-                  <Select value={config.endType} onValueChange={handleEndType}>
-                    <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {endTypeOptions.filter((opt) => isWidespan ? opt.value !== "extended_gable" : true).map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : (
-                <div />
-              )}
+            </div>
+            {/* Ends row */}
+            <div className="grid grid-cols-3 gap-x-4 gap-y-3">
               <div className="space-y-1">
                 <Label className="text-xs"># Ends</Label>
                 <Select value={String(config.endsQty)} onValueChange={(v) => update("endsQty", Number(v) as 0 | 1 | 2)}>
@@ -520,6 +509,19 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                   </SelectContent>
                 </Select>
               </div>
+              {config.endsQty > 0 && (
+                <div className="space-y-1">
+                  <Label className="text-xs">End Type</Label>
+                  <Select value={config.endType} onValueChange={handleEndType}>
+                    <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {endTypeOptions.filter((opt) => isWidespan ? opt.value !== "extended_gable" : true).map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               {config.endsQty > 0 && !isWidespan && (
                 <div className="space-y-1">
                   <Label className="text-xs">End Panel</Label>
