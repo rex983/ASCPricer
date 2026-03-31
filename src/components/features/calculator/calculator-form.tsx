@@ -720,59 +720,86 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
           <CardContent className="pt-4 pb-3 space-y-3">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Insulation & Engineering</p>
             <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Insulation</Label>
-                <Select
-                  value={config.insulationType}
-                  onValueChange={(v) => {
-                    const type = v as BuildingConfig["insulationType"];
-                    setConfig((prev) => ({
-                      ...prev,
-                      insulationType: type,
-                      insulationScope: type === "none" ? "none" : prev.insulationScope === "none" ? "fully_insulated" : prev.insulationScope,
-                    }));
-                  }}
-                >
-                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {insulationTypes.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {config.insulationType !== "none" && (() => {
-                const isAFV = config.roofStyle === "a_frame_vertical" || isWidespan;
-                const allVertical = isAFV
-                  && config.sidesOrientation === "vertical"
-                  && config.endsOrientation === "vertical";
-                return (
+              {isWidespan ? (
+                /* Widespan: single dropdown — None / Roof Only / Fully Insulated */
+                <div className="space-y-1">
+                  <Label className="text-xs">Insulation</Label>
+                  <Select
+                    value={config.insulationScope === "none" ? "none" : config.insulationScope}
+                    onValueChange={(v) => {
+                      const scope = v as BuildingConfig["insulationScope"];
+                      setConfig((prev) => ({
+                        ...prev,
+                        insulationType: scope === "none" ? "none" : "fiberglass",
+                        insulationScope: scope,
+                      }));
+                    }}
+                  >
+                    <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      <SelectItem value="roof_only">Roof Only</SelectItem>
+                      <SelectItem value="fully_insulated">Fully Insulated</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                /* Standard: type picker + conditional scope picker */
+                <>
                   <div className="space-y-1">
-                    <Label className="text-xs">Scope</Label>
+                    <Label className="text-xs">Insulation</Label>
                     <Select
-                      value={config.insulationScope}
-                      onValueChange={(v) => update("insulationScope", v as BuildingConfig["insulationScope"])}
+                      value={config.insulationType}
+                      onValueChange={(v) => {
+                        const type = v as BuildingConfig["insulationType"];
+                        setConfig((prev) => ({
+                          ...prev,
+                          insulationType: type,
+                          insulationScope: type === "none" ? "none" : prev.insulationScope === "none" ? "fully_insulated" : prev.insulationScope,
+                        }));
+                      }}
                     >
                       <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {insulationScopes.map((opt) => (
-                          <SelectItem
-                            key={opt.value}
-                            value={opt.value}
-                            disabled={
-                              (opt.value === "roof_only" && !isAFV) ||
-                              (opt.value === "fully_insulated" && !allVertical)
-                            }
-                          >
-                            {opt.label}
-                          </SelectItem>
+                        {insulationTypes.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
-                );
-              })()}
+                  {config.insulationType !== "none" && (() => {
+                    const isAFV = config.roofStyle === "a_frame_vertical";
+                    const allVertical = isAFV
+                      && config.sidesOrientation === "vertical"
+                      && config.endsOrientation === "vertical";
+                    return (
+                      <div className="space-y-1">
+                        <Label className="text-xs">Scope</Label>
+                        <Select
+                          value={config.insulationScope}
+                          onValueChange={(v) => update("insulationScope", v as BuildingConfig["insulationScope"])}
+                        >
+                          <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {insulationScopes.map((opt) => (
+                              <SelectItem
+                                key={opt.value}
+                                value={opt.value}
+                                disabled={
+                                  (opt.value === "roof_only" && !isAFV) ||
+                                  (opt.value === "fully_insulated" && !allVertical)
+                                }
+                              >
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    );
+                  })()}
+                </>
+              )}
 
               {isWidespan && (
                 <div className="space-y-1">
