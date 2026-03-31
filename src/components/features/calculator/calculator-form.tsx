@@ -145,7 +145,7 @@ function getDefaultConfig(type: SpreadsheetType): BuildingConfig {
     width: isWidespan ? 40 : 12,
     length: isWidespan ? 30 : 20,
     height: isWidespan ? 10 : 8,
-    gauge: isWidespan ? 12 : 14,
+    gauge: 14,
     roofStyle: "a_frame_vertical",
     sheetMetal: isWidespan ? "29g_agg" : undefined,
     sidesCoverage: isWidespan ? "open" : "fully_enclosed",
