@@ -12,6 +12,7 @@ import {
 } from "@react-pdf/renderer";
 import type { Quote } from "@/types/quote";
 import type { PriceBreakdown, SnowEngineeringBreakdown } from "@/types/pricing";
+import { DEFAULT_DISCLAIMERS } from "@/lib/pricing/constants";
 
 // Load logo as base64 data URI for embedding in PDF
 function getLogoDataUri(): string {
@@ -349,6 +350,22 @@ function QuoteDocument({ quote }: { quote: Quote }) {
             <Text style={styles.label}>{quote.notes}</Text>
           </View>
         )}
+
+        {/* Disclaimers */}
+        <View style={{ marginTop: 12 }}>
+          {DEFAULT_DISCLAIMERS.map((text, i) => {
+            const isSnow = text.toLowerCase().includes("snow concerns");
+            const isEngineering = text.toLowerCase().includes("contact the engineering");
+            const isExcludes = text.toLowerCase().includes("quote excludes");
+            const color = isSnow ? "#d97706" : isEngineering ? "#dc2626" : "#666";
+            const weight = isEngineering || isExcludes ? "bold" as const : "normal" as const;
+            return (
+              <Text key={i} style={{ fontSize: 7, color, fontWeight: weight, lineHeight: 1.6 }}>
+                {text}
+              </Text>
+            );
+          })}
+        </View>
 
         {/* Footer */}
         <Text style={styles.footer}>
