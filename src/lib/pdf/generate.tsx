@@ -106,9 +106,8 @@ function SnowBreakdownPage({ quote }: { quote: Quote }) {
   const p = quote.pricing as PriceBreakdown;
   const c = quote.config;
   const breakdown = p.snowEngineeringBreakdown as SnowEngineeringBreakdown | undefined;
-
-  // Don't render page if no snow engineering data
-  if (!breakdown || breakdown.components.length === 0) return null;
+  const components = breakdown?.components ?? [];
+  const totalCost = breakdown?.totalCost ?? 0;
 
   return (
     <Page size="LETTER" style={styles.page}>
@@ -146,6 +145,22 @@ function SnowBreakdownPage({ quote }: { quote: Quote }) {
           Per-Component Breakdown
         </Text>
 
+        {p.contactEngineer && (
+          <View style={{ padding: 10, backgroundColor: "#fef3c7", borderRadius: 4, marginBottom: 8 }}>
+            <Text style={{ fontSize: 10, fontWeight: "bold", color: "#92400e" }}>
+              Snow/wind loads exceed standard engineering — contact engineer for custom pricing.
+            </Text>
+          </View>
+        )}
+
+        {!c.snowLoad && components.length === 0 && (
+          <View style={{ padding: 10, backgroundColor: "#f5f5f5", borderRadius: 4, marginBottom: 8 }}>
+            <Text style={{ fontSize: 10, color: "#555" }}>
+              No snow load selected. Only wind rating ({c.windRating} MPH) applies.
+            </Text>
+          </View>
+        )}
+
         {/* Table Header */}
         <View style={styles.tableHeader}>
           <Text style={[styles.tableHeaderCell, styles.colComponent]}>Component</Text>
@@ -156,7 +171,7 @@ function SnowBreakdownPage({ quote }: { quote: Quote }) {
         </View>
 
         {/* Table Rows */}
-        {breakdown.components.map((comp, i) => (
+        {components.map((comp, i) => (
           <View key={i} style={i % 2 === 1 ? styles.tableRowAlt : styles.tableRow}>
             <Text style={[styles.tableCellBold, styles.colComponent]}>{comp.name}</Text>
             <Text style={[styles.tableCell, styles.colOriginal]}>{comp.originalCount}</Text>
@@ -176,7 +191,7 @@ function SnowBreakdownPage({ quote }: { quote: Quote }) {
           <Text style={[styles.tableHeaderCell, styles.colOriginal]}></Text>
           <Text style={[styles.tableHeaderCell, styles.colSpacing]}></Text>
           <Text style={[styles.tableHeaderCell, styles.colExtra]}></Text>
-          <Text style={[styles.tableHeaderCell, styles.colCost]}>{fmt(breakdown.totalCost)}</Text>
+          <Text style={[styles.tableHeaderCell, styles.colCost]}>{fmt(totalCost)}</Text>
         </View>
       </View>
 
@@ -186,7 +201,7 @@ function SnowBreakdownPage({ quote }: { quote: Quote }) {
           Engineering Notes
         </Text>
         <Text style={{ fontSize: 8, color: "#555", lineHeight: 1.5 }}>
-          {`\u2022 Component costs above sum to the Snow/Wind Engineering total of ${fmt(breakdown.totalCost)} on page 1.`}
+          {`\u2022 Component costs above sum to the Snow/Wind Engineering total of ${fmt(totalCost)} on page 1.`}
         </Text>
         <Text style={{ fontSize: 8, color: "#555", lineHeight: 1.5 }}>
           {"\u2022 \"Extra Needed\" = additional components beyond standard configuration to meet load requirements."}
