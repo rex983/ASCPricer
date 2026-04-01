@@ -68,6 +68,22 @@ export interface BuildingConfig {
   taxRate: number; // e.g., 0.0825 for 8.25%
 }
 
+// ---- Snow Engineering Breakdown ----
+
+export interface SnowComponentDetail {
+  name: string;              // "Trusses", "Hat Channels", "Purlins", "Girts", "Verticals"
+  originalCount: number;
+  requiredSpacing: number;   // inches
+  extraNeeded: number;
+  cost: number;
+}
+
+export interface SnowEngineeringBreakdown {
+  components: SnowComponentDetail[];
+  totalCost: number;
+  contactEngineer?: boolean;
+}
+
 // ---- Price Breakdown (output) ----
 
 export interface PriceBreakdown {
@@ -82,6 +98,7 @@ export interface PriceBreakdown {
   rollUpDoorsSides: number;
   insulation: number;
   snowEngineering: number;
+  snowEngineeringBreakdown?: SnowEngineeringBreakdown;
   contactEngineer?: boolean; // true when snow load exceeds standard engineering
   diagonalBracing: number;
   anchors: number;

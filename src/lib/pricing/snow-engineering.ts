@@ -3,6 +3,8 @@ import type {
   StandardMatrices,
   WidespanMatrices,
   PricingLookup,
+  SnowEngineeringBreakdown,
+  SnowComponentDetail,
 } from "@/types/pricing";
 import { lookupMatrix, lookupValue, nearestBucket, nearestBucketUp } from "./lookups";
 import {
@@ -236,8 +238,8 @@ export function calculateStandardSnowEngineering(
   config: BuildingConfig,
   matrices: StandardMatrices,
   resolvedKeys: { width: number; length: number; roofKey: string }
-): number {
-  if (!config.snowLoad) return 0;
+): SnowEngineeringBreakdown {
+  if (!config.snowLoad) return { components: [], totalCost: 0 };
 
   const { width, length, roofKey } = resolvedKeys;
   const rawState = config.state || "";
@@ -277,6 +279,7 @@ export function calculateStandardSnowEngineering(
   const configKey = buildSnowConfigKey(isEnclosed, bucketedWind, width, roofKey);
 
   let totalCost = 0;
+  const components: SnowComponentDetail[] = [];
 
   // ── Step 2: Extra Trusses ──
   const rawTrussSpacing = lookupMatrix(
@@ -312,10 +315,10 @@ export function calculateStandardSnowEngineering(
     : adjustTrussSpacingForHeight(rawTrussSpacing, config.height, irregular);
 
   // If truss spacing is too small, the load exceeds standard engineering
-  // → "Contact Engineer" (return -1 as sentinel)
+  // → "Contact Engineer"
   // Spreadsheet checks: K13: IF(P2<24), AD20: IF(OR(spacingProduct=0, trussSpacing<18))
-  if (trussSpacing === 0 || trussSpacing < 24) return -1;
-  if (f52TrussSpacing === 0) return -1;
+  if (trussSpacing === 0 || trussSpacing < 24) return { components: [], totalCost: 0, contactEngineer: true };
+  if (f52TrussSpacing === 0) return { components: [], totalCost: 0, contactEngineer: true };
 
   if (trussSpacing > 0) {
     const lengthInches = length * 12;
@@ -330,6 +333,7 @@ export function calculateStandardSnowEngineering(
     );
 
     const extraTrusses = Math.max(0, trussesNeeded - originalTrusses);
+    let trussCost = 0;
     if (extraTrusses > 0) {
       const baseTrussPrice = getTrussPrice(
         width,
@@ -348,8 +352,16 @@ export function calculateStandardSnowEngineering(
         state
       ) || 15; // fallback $15
       const legSurcharge = feetUsed * piePricePerFt;
-      totalCost += extraTrusses * (baseTrussPrice + legSurcharge);
+      trussCost = extraTrusses * (baseTrussPrice + legSurcharge);
+      totalCost += trussCost;
     }
+    components.push({
+      name: "Trusses",
+      originalCount: originalTrusses,
+      requiredSpacing: trussSpacing,
+      extraNeeded: extraTrusses,
+      cost: trussCost,
+    });
   }
 
   // ── Step 3: Extra Hat Channels (two-stage lookup) ──
@@ -379,34 +391,52 @@ export function calculateStandardSnowEngineering(
     String(bucketedWind)
   );
 
-  if (isAFV && hatChannelSpacing > 0) {
-    const barSize = (width + 2) / 2; // half-width in ft
-    const barInches = barSize * 12;
-    const channelsPerSide = Math.ceil(barInches / hatChannelSpacing) + 1;
-    const totalChannels = channelsPerSide * 2; // both sides of roof
+  {
+    let hcOriginal = 0;
+    let hcExtra = 0;
+    let hcCost = 0;
+    const hcSpacingDisplay = hatChannelSpacing > 0 ? hatChannelSpacing : 0;
 
-    // Original HC count: hatChannelCounts[state][width]
-    let originalChannels = lookupMatrix(
-      matrices.snow.hatChannelCounts,
-      state,
-      String(width)
-    );
-    // Fallback: try width as row key
-    if (originalChannels === 0) {
-      originalChannels = lookupMatrix(
+    if (isAFV && hatChannelSpacing > 0) {
+      const barSize = (width + 2) / 2; // half-width in ft
+      const barInches = barSize * 12;
+      const channelsPerSide = Math.ceil(barInches / hatChannelSpacing) + 1;
+      const totalChannels = channelsPerSide * 2; // both sides of roof
+
+      // Original HC count: hatChannelCounts[state][width]
+      let originalChannels = lookupMatrix(
         matrices.snow.hatChannelCounts,
-        String(width),
-        state
+        state,
+        String(width)
       );
+      // Fallback: try width as row key
+      if (originalChannels === 0) {
+        originalChannels = lookupMatrix(
+          matrices.snow.hatChannelCounts,
+          String(width),
+          state
+        );
+      }
+      hcOriginal = originalChannels;
+
+      const extraChannels = Math.max(0, totalChannels - originalChannels);
+      hcExtra = extraChannels;
+      if (extraChannels > 0) {
+        const channelPricePerFt =
+          lookupValue(matrices.snow.channelPriceByState, state) || 2;
+        const channelLength = length + 1;
+        hcCost = extraChannels * channelPricePerFt * channelLength;
+        totalCost += hcCost;
+      }
     }
 
-    const extraChannels = Math.max(0, totalChannels - originalChannels);
-    if (extraChannels > 0) {
-      const channelPricePerFt =
-        lookupValue(matrices.snow.channelPriceByState, state) || 2;
-      const channelLength = length + 1;
-      totalCost += extraChannels * channelPricePerFt * channelLength;
-    }
+    components.push({
+      name: "Hat Channels",
+      originalCount: hcOriginal,
+      requiredSpacing: hcSpacingDisplay,
+      extraNeeded: hcExtra,
+      cost: hcCost,
+    });
   }
 
   // ── Step 4: Extra Girts ──
@@ -418,35 +448,54 @@ export function calculateStandardSnowEngineering(
     config.endsOrientation === "vertical";
   const girtsNeeded = isEnclosed && hasVerticalPanels;
 
-  if (girtsNeeded) {
-    const girtSpacing = lookupMatrix(
-      matrices.snow.girtSpacing,
-      String(bucketedGirtTrussSpacing),
-      String(bucketedWind)
-    );
-    if (girtSpacing > 0) {
-      const heightInches = config.height * 12;
-      const girtsRequired = Math.ceil(heightInches / girtSpacing) + 1;
-      const originalGirts = resolveOriginalGirts(
-        config.height,
-        matrices.snow.girtCountsByHeight
-      );
+  {
+    let girtOriginal = 0;
+    let girtExtra = 0;
+    let girtCost = 0;
+    let girtSpacingDisplay = 0;
 
-      const extraGirts = Math.max(0, girtsRequired - originalGirts);
-      if (extraGirts > 0) {
-        const tubingPrice =
-          lookupValue(matrices.snow.tubingPriceByState, state) || 3;
-        // Girt perimeter: vertical sides × length + vertical ends × width
-        let perimeter = 0;
-        if (config.sidesCoverage !== "open" && config.sidesOrientation === "vertical") {
-          perimeter += config.sidesQty * length;
+    if (girtsNeeded) {
+      const girtSpacing = lookupMatrix(
+        matrices.snow.girtSpacing,
+        String(bucketedGirtTrussSpacing),
+        String(bucketedWind)
+      );
+      girtSpacingDisplay = girtSpacing;
+      if (girtSpacing > 0) {
+        const heightInches = config.height * 12;
+        const girtsRequired = Math.ceil(heightInches / girtSpacing) + 1;
+        const originalGirts = resolveOriginalGirts(
+          config.height,
+          matrices.snow.girtCountsByHeight
+        );
+        girtOriginal = originalGirts;
+
+        const extraGirts = Math.max(0, girtsRequired - originalGirts);
+        girtExtra = extraGirts;
+        if (extraGirts > 0) {
+          const tubingPrice =
+            lookupValue(matrices.snow.tubingPriceByState, state) || 3;
+          // Girt perimeter: vertical sides × length + vertical ends × width
+          let perimeter = 0;
+          if (config.sidesCoverage !== "open" && config.sidesOrientation === "vertical") {
+            perimeter += config.sidesQty * length;
+          }
+          if (config.endsQty > 0 && config.endsOrientation === "vertical") {
+            perimeter += config.endsQty * width;
+          }
+          girtCost = extraGirts * tubingPrice * perimeter;
+          totalCost += girtCost;
         }
-        if (config.endsQty > 0 && config.endsOrientation === "vertical") {
-          perimeter += config.endsQty * width;
-        }
-        totalCost += extraGirts * tubingPrice * perimeter;
       }
     }
+
+    components.push({
+      name: "Girts",
+      originalCount: girtOriginal,
+      requiredSpacing: girtSpacingDisplay,
+      extraNeeded: girtExtra,
+      cost: girtCost,
+    });
   }
 
   // ── Step 5: Extra Verticals ──
@@ -456,36 +505,57 @@ export function calculateStandardSnowEngineering(
     String(config.height),
     String(bucketedWind)
   );
-  if (verticalSpacing > 0) {
-    // Verticals use WIDTH (not height) for count calculation
-    const widthInches = width * 12;
-    const verticalsNeeded = Math.ceil(widthInches / verticalSpacing) + 1;
 
-    // Original vertical count: verticalCounts[width] (PricingLookup)
-    const originalVerticals = lookupValue(
-      matrices.snow.verticalCounts,
-      String(width)
-    );
+  {
+    let vertOriginal = 0;
+    let vertExtra = 0;
+    let vertCost = 0;
 
-    const extraVerticals = Math.max(0, verticalsNeeded - originalVerticals);
-    // Spreadsheet: I34 = IF(endType="Enclosed Ends",1,0); I35 = I34 * endsQty
-    // Verticals only apply to enclosed ends (not gable/extended gable)
-    if (extraVerticals > 0 && config.endType === "enclosed" && config.endsQty > 0) {
-      const tubingPrice =
-        lookupValue(matrices.snow.tubingPriceByState, state) || 3;
-      // Verticals run the PEAK height (eave + rounded-up roof rise)
-      const peakHeight = config.height + getRoofRise(width, roofKey);
-      // Extra verticals × enclosed ends × tubing price × peak height
-      const baseVertCost =
-        extraVerticals * config.endsQty * tubingPrice * peakHeight;
-      // Height multiplier: 13-15→×2, 16-18→×2.5, 19-20→×3
-      // Spreadsheet formula in U20: IF(height=13..15, vertCost*2, IF(16-18, price*2.5*extra, ...))
-      const heightMult = getVerticalHeightMultiplier(config.height);
-      totalCost += baseVertCost * heightMult;
+    if (verticalSpacing > 0) {
+      // Verticals use WIDTH (not height) for count calculation
+      const widthInches = width * 12;
+      const verticalsNeeded = Math.ceil(widthInches / verticalSpacing) + 1;
+
+      // Original vertical count: verticalCounts[width] (PricingLookup)
+      const originalVerticals = lookupValue(
+        matrices.snow.verticalCounts,
+        String(width)
+      );
+      vertOriginal = originalVerticals;
+
+      const extraVerticals = Math.max(0, verticalsNeeded - originalVerticals);
+      // Spreadsheet: I34 = IF(endType="Enclosed Ends",1,0); I35 = I34 * endsQty
+      // Verticals only apply to enclosed ends (not gable/extended gable)
+      if (extraVerticals > 0 && config.endType === "enclosed" && config.endsQty > 0) {
+        vertExtra = extraVerticals;
+        const tubingPrice =
+          lookupValue(matrices.snow.tubingPriceByState, state) || 3;
+        // Verticals run the PEAK height (eave + rounded-up roof rise)
+        const peakHeight = config.height + getRoofRise(width, roofKey);
+        // Extra verticals × enclosed ends × tubing price × peak height
+        const baseVertCost =
+          extraVerticals * config.endsQty * tubingPrice * peakHeight;
+        // Height multiplier: 13-15→×2, 16-18→×2.5, 19-20→×3
+        // Spreadsheet formula in U20: IF(height=13..15, vertCost*2, IF(16-18, price*2.5*extra, ...))
+        const heightMult = getVerticalHeightMultiplier(config.height);
+        vertCost = baseVertCost * heightMult;
+        totalCost += vertCost;
+      }
     }
+
+    components.push({
+      name: "Verticals",
+      originalCount: vertOriginal,
+      requiredSpacing: verticalSpacing,
+      extraNeeded: vertExtra,
+      cost: vertCost,
+    });
   }
 
-  return Math.round(totalCost);
+  return {
+    components,
+    totalCost: Math.round(totalCost),
+  };
 }
 
 // ── Widespan Snow Engineering ──
@@ -507,6 +577,7 @@ export interface WidespanEngineeringResult {
   totalTrusses: number;
   /** Total verticals needed (max of calculated vs original) — used for anchor count */
   totalVerticals: number;
+  breakdown: SnowEngineeringBreakdown;
 }
 
 export function calculateWidespanSnowEngineering(
@@ -514,7 +585,8 @@ export function calculateWidespanSnowEngineering(
   matrices: WidespanMatrices,
   resolvedKeys: { width: number; length: number }
 ): WidespanEngineeringResult {
-  if (!config.snowLoad) return { cost: 0, extraTrusses: 0, extraVerticals: 0, totalTrusses: 0, totalVerticals: 0 };
+  const emptyBreakdown: SnowEngineeringBreakdown = { components: [], totalCost: 0 };
+  if (!config.snowLoad) return { cost: 0, extraTrusses: 0, extraVerticals: 0, totalTrusses: 0, totalVerticals: 0, breakdown: emptyBreakdown };
 
   const { width, length } = resolvedKeys;
 
@@ -543,32 +615,52 @@ export function calculateWidespanSnowEngineering(
   let resultExtraVerticals = 0;
   let resultTotalTrusses = 0;
   let resultTotalVerticals = 0;
+  const components: SnowComponentDetail[] = [];
 
   // ── Extra Trusses ──
   const trussData = matrices.snow.trussCounts[String(length)];
-  if (trussData) {
-    const originalTrusses = trussData.count || 0;
-    const maxSpacing =
-      matrices.snow.trussSpacing[String(length)]?.spacing || 120;
+  {
+    let trussOriginal = 0;
+    let trussExtra = 0;
+    let trussCost = 0;
+    let trussSpacingDisplay = 0;
 
-    const lengthInches = length * 12;
-    // Spreadsheet: ceil(L/S) + 1 - 2 = ceil(L/S) - 1 (end trusses already included)
-    const trussesNeeded = Math.ceil(lengthInches / maxSpacing) - 1;
-    const extraTrusses = Math.max(0, trussesNeeded - originalTrusses);
-    resultExtraTrusses = extraTrusses;
-    resultTotalTrusses = Math.max(trussesNeeded, originalTrusses);
+    if (trussData) {
+      const originalTrusses = trussData.count || 0;
+      const maxSpacing =
+        matrices.snow.trussSpacing[String(length)]?.spacing || 120;
+      trussOriginal = originalTrusses;
+      trussSpacingDisplay = maxSpacing;
 
-    if (extraTrusses > 0) {
-      const trussPrice =
-        lookupValue(matrices.snow.trussPriceByState, String(width)) || 2000;
-      totalCost += extraTrusses * trussPrice;
+      const lengthInches = length * 12;
+      // Spreadsheet: ceil(L/S) + 1 - 2 = ceil(L/S) - 1 (end trusses already included)
+      const trussesNeeded = Math.ceil(lengthInches / maxSpacing) - 1;
+      const extraTrusses = Math.max(0, trussesNeeded - originalTrusses);
+      resultExtraTrusses = extraTrusses;
+      resultTotalTrusses = Math.max(trussesNeeded, originalTrusses);
+      trussExtra = extraTrusses;
 
-      // Leg height cost for extra trusses
-      if (config.height > 10) {
-        const legCostPerFt = matrices.snow.legTrussCostPerFt || 90;
-        totalCost += extraTrusses * (config.height - 10) * legCostPerFt;
+      if (extraTrusses > 0) {
+        const trussPrice =
+          lookupValue(matrices.snow.trussPriceByState, String(width)) || 2000;
+        trussCost += extraTrusses * trussPrice;
+
+        // Leg height cost for extra trusses
+        if (config.height > 10) {
+          const legCostPerFt = matrices.snow.legTrussCostPerFt || 90;
+          trussCost += extraTrusses * (config.height - 10) * legCostPerFt;
+        }
+        totalCost += trussCost;
       }
     }
+
+    components.push({
+      name: "Trusses",
+      originalCount: trussOriginal,
+      requiredSpacing: trussSpacingDisplay,
+      extraNeeded: trussExtra,
+      cost: trussCost,
+    });
   }
 
   // ── Extra Purlins ──
@@ -577,41 +669,75 @@ export function calculateWidespanSnowEngineering(
     configKey,
     snowCode
   );
-  if (purlinSpacing > 0) {
-    const halfWidth = (width + 2) / 2;
-    const halfInches = halfWidth * 12;
-    const purlinsNeeded = Math.ceil(halfInches / purlinSpacing) + 1;
-    const totalPurlins = purlinsNeeded * 2;
+  {
+    let purlinOriginal = 0;
+    let purlinExtra = 0;
+    let purlinCost = 0;
 
-    const originalPurlins =
-      matrices.snow.purlinCounts[String(width)]?.count || 12;
-    const extraPurlins = Math.max(0, totalPurlins - originalPurlins);
+    if (purlinSpacing > 0) {
+      const halfWidth = (width + 2) / 2;
+      const halfInches = halfWidth * 12;
+      const purlinsNeeded = Math.ceil(halfInches / purlinSpacing) + 1;
+      const totalPurlins = purlinsNeeded * 2;
 
-    if (extraPurlins > 0) {
-      const purlinCostPerFt = matrices.snow.purlinCostPerFt || 6;
-      totalCost += extraPurlins * purlinCostPerFt * length;
+      const originalPurlins =
+        matrices.snow.purlinCounts[String(width)]?.count || 12;
+      purlinOriginal = originalPurlins;
+      const extraPurlins = Math.max(0, totalPurlins - originalPurlins);
+      purlinExtra = extraPurlins;
+
+      if (extraPurlins > 0) {
+        const purlinCostPerFt = matrices.snow.purlinCostPerFt || 6;
+        purlinCost = extraPurlins * purlinCostPerFt * length;
+        totalCost += purlinCost;
+      }
     }
+
+    components.push({
+      name: "Purlins",
+      originalCount: purlinOriginal,
+      requiredSpacing: purlinSpacing > 0 ? purlinSpacing : 0,
+      extraNeeded: purlinExtra,
+      cost: purlinCost,
+    });
   }
 
   // ── Extra Girts (uses wind mapping #2) ──
   const girtSpacingVal =
     lookupValue(matrices.snow.windLoadMapping2, String(windGirt)) ||
     matrices.snow.girtSpacing[String(windGirt)]?.spacing;
-  if (girtSpacingVal && girtSpacingVal > 0) {
-    const heightInches = config.height * 12;
-    const girtsNeeded = Math.ceil(heightInches / girtSpacingVal) + 1;
-    const originalGirts =
-      matrices.snow.girtCounts[String(config.height)]?.count || 3;
-    const extraGirts = Math.max(0, girtsNeeded - originalGirts);
+  {
+    let girtOriginal = 0;
+    let girtExtra = 0;
+    let girtCost = 0;
 
-    if (extraGirts > 0) {
-      // Perimeter based on enclosed surfaces only
-      let perimeter = 0;
-      if (config.sidesCoverage !== "open") perimeter += config.sidesQty * length;
-      if (config.endsQty > 0) perimeter += config.endsQty * width;
-      const girtCostPerFt = matrices.snow.girtCostPerFt || 6;
-      totalCost += extraGirts * girtCostPerFt * perimeter;
+    if (girtSpacingVal && girtSpacingVal > 0) {
+      const heightInches = config.height * 12;
+      const girtsNeeded = Math.ceil(heightInches / girtSpacingVal) + 1;
+      const originalGirts =
+        matrices.snow.girtCounts[String(config.height)]?.count || 3;
+      girtOriginal = originalGirts;
+      const extraGirts = Math.max(0, girtsNeeded - originalGirts);
+      girtExtra = extraGirts;
+
+      if (extraGirts > 0) {
+        // Perimeter based on enclosed surfaces only
+        let perimeter = 0;
+        if (config.sidesCoverage !== "open") perimeter += config.sidesQty * length;
+        if (config.endsQty > 0) perimeter += config.endsQty * width;
+        const girtCostPerFt = matrices.snow.girtCostPerFt || 6;
+        girtCost = extraGirts * girtCostPerFt * perimeter;
+        totalCost += girtCost;
+      }
     }
+
+    components.push({
+      name: "Girts",
+      originalCount: girtOriginal,
+      requiredSpacing: girtSpacingVal && girtSpacingVal > 0 ? girtSpacingVal : 0,
+      extraNeeded: girtExtra,
+      cost: girtCost,
+    });
   }
 
   // ── Extra Verticals ──
@@ -621,31 +747,50 @@ export function calculateWidespanSnowEngineering(
     matrices.snow.verticalSpacingByWind,
     String(windMain)
   );
-  if (verticalSpacing > 0) {
-    const originalVerticals =
-      lookupValue(matrices.snow.verticalCountByWidth, String(width)) || 0;
+  {
+    let vertOriginal = 0;
+    let vertExtra = 0;
+    let vertCost = 0;
 
-    const widthInches = width * 12;
-    const verticalsNeeded = Math.ceil(widthInches / verticalSpacing) + 1;
+    if (verticalSpacing > 0) {
+      const originalVerticals =
+        lookupValue(matrices.snow.verticalCountByWidth, String(width)) || 0;
+      vertOriginal = originalVerticals;
 
-    const extraVerticals = Math.max(0, verticalsNeeded - originalVerticals);
-    resultExtraVerticals = extraVerticals;
-    // Also track total verticals needed (for anchor calculation)
-    resultTotalVerticals = Math.max(verticalsNeeded, originalVerticals);
-    if (extraVerticals > 0) {
-      const verticalCostPerFt = matrices.snow.verticalCostPerFt || 18;
-      // Peak height = leg height + roof rise (A-frame pitch: 3:12)
-      const roofRise = Math.ceil((width / 2) * (3 / 12));
-      const totalHeight = config.height + roofRise;
-      totalCost += extraVerticals * verticalCostPerFt * totalHeight;
+      const widthInches = width * 12;
+      const verticalsNeeded = Math.ceil(widthInches / verticalSpacing) + 1;
+
+      const extraVerticals = Math.max(0, verticalsNeeded - originalVerticals);
+      resultExtraVerticals = extraVerticals;
+      vertExtra = extraVerticals;
+      // Also track total verticals needed (for anchor calculation)
+      resultTotalVerticals = Math.max(verticalsNeeded, originalVerticals);
+      if (extraVerticals > 0) {
+        const verticalCostPerFt = matrices.snow.verticalCostPerFt || 18;
+        // Peak height = leg height + roof rise (A-frame pitch: 3:12)
+        const roofRise = Math.ceil((width / 2) * (3 / 12));
+        const totalHeight = config.height + roofRise;
+        vertCost = extraVerticals * verticalCostPerFt * totalHeight;
+        totalCost += vertCost;
+      }
     }
+
+    components.push({
+      name: "Verticals",
+      originalCount: vertOriginal,
+      requiredSpacing: verticalSpacing > 0 ? verticalSpacing : 0,
+      extraNeeded: vertExtra,
+      cost: vertCost,
+    });
   }
 
+  const roundedTotal = Math.round(totalCost);
   return {
-    cost: Math.round(totalCost),
+    cost: roundedTotal,
     extraTrusses: resultExtraTrusses,
     extraVerticals: resultExtraVerticals,
     totalTrusses: resultTotalTrusses,
     totalVerticals: resultTotalVerticals,
+    breakdown: { components, totalCost: roundedTotal },
   };
 }

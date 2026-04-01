@@ -245,7 +245,7 @@ export function calculateWidespanPrice(
   return {
     basePrice, roofStyle: 0, legs, sides, ends,
     walkInDoors, windows, rollUpDoorsEnds, rollUpDoorsSides,
-    insulation, snowEngineering, diagonalBracing,
+    insulation, snowEngineering, snowEngineeringBreakdown: engineeringResult.breakdown, diagonalBracing,
     anchors, wainscot, plans, calculations,
     subtotal, laborEquipment,
     taxRate: config.taxRate, taxAmount, total,

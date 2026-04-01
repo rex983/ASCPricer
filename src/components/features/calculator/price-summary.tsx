@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import type { PriceBreakdown } from "@/types/pricing";
 import { formatCurrency } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
@@ -17,6 +19,47 @@ function LineItem({ label, value }: { label: string; value: number }) {
     <div className="flex justify-between text-sm">
       <span className="text-muted-foreground">{label}</span>
       <span className="font-medium">{formatCurrency(value)}</span>
+    </div>
+  );
+}
+
+function SnowEngineeringLine({ breakdown }: { breakdown: PriceBreakdown }) {
+  const [expanded, setExpanded] = useState(false);
+  const details = breakdown.snowEngineeringBreakdown;
+  const hasDetails = details && details.components.length > 0;
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => hasDetails && setExpanded(!expanded)}
+        className="flex w-full justify-between text-sm group"
+        disabled={!hasDetails}
+      >
+        <span className="text-muted-foreground flex items-center gap-1">
+          Snow/Wind Engineering
+          {hasDetails && (
+            <ChevronDown
+              className={`h-3 w-3 transition-transform ${expanded ? "rotate-180" : ""}`}
+            />
+          )}
+        </span>
+        <span className="font-medium">{formatCurrency(breakdown.snowEngineering)}</span>
+      </button>
+      {expanded && details && (
+        <div className="mt-1 space-y-0.5 pl-3 border-l-2 border-muted">
+          {details.components.map((comp) => (
+            <div key={comp.name} className="flex justify-between text-xs text-muted-foreground">
+              <span>
+                {comp.name}: {comp.originalCount} orig
+                {comp.requiredSpacing > 0 && <>, {comp.requiredSpacing}&quot; spacing</>}
+                , +{comp.extraNeeded}
+              </span>
+              <span className="font-medium">{formatCurrency(comp.cost)}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -54,9 +97,9 @@ export function PriceSummary({ breakdown, isWidespan, disclaimers: disclaimersPr
               <span className="text-muted-foreground">Snow/Wind Engineering</span>
               <span className="font-medium text-amber-500">Contact Engineer</span>
             </div>
-          ) : (
-            <LineItem label="Snow/Wind Engineering" value={breakdown.snowEngineering} />
-          )}
+          ) : breakdown.snowEngineering !== 0 ? (
+            <SnowEngineeringLine breakdown={breakdown} />
+          ) : null}
           {!isWidespan && <LineItem label="Diagonal Bracing" value={breakdown.diagonalBracing} />}
           {isWidespan && <LineItem label="Anchors" value={breakdown.anchors} />}
         </div>

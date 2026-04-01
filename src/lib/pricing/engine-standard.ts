@@ -177,9 +177,9 @@ export function calculateStandardPrice(
   }
 
   // ── Snow Engineering ──
-  const snowRaw = calculateStandardSnowEngineering(config, matrices, keys);
-  const contactEngineer = snowRaw === -1; // -1 = beyond standard engineering
-  const snowEngineering = contactEngineer ? 0 : snowRaw;
+  const snowResult = calculateStandardSnowEngineering(config, matrices, keys);
+  const contactEngineer = snowResult.contactEngineer ?? false;
+  const snowEngineering = contactEngineer ? 0 : snowResult.totalCost;
 
   // ── Diagonal Bracing (automatic — 3-trigger system) ──
   const permitRequired = matrices.snow.permitRequired ?? false;
@@ -255,7 +255,7 @@ export function calculateStandardPrice(
   return {
     basePrice, roofStyle, legs, sides, ends,
     walkInDoors, windows, rollUpDoorsEnds, rollUpDoorsSides,
-    insulation, snowEngineering, contactEngineer, diagonalBracing,
+    insulation, snowEngineering, snowEngineeringBreakdown: snowResult, contactEngineer, diagonalBracing,
     anchors: 0, wainscot: 0, plans, calculations,
     subtotal, laborEquipment,
     taxRate: config.taxRate, taxAmount, total,
