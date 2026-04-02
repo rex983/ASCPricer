@@ -27,9 +27,13 @@ export async function GET(req: NextRequest) {
   // admin sees all
 
   if (search) {
-    query = query.or(
-      `name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`
-    );
+    // Escape special PostgREST filter characters to prevent filter injection
+    const s = search.replace(/[%_\\(),."']/g, "");
+    if (s) {
+      query = query.or(
+        `name.ilike.%${s}%,email.ilike.%${s}%,phone.ilike.%${s}%`
+      );
+    }
   }
 
   const { data, error } = await query;

@@ -96,6 +96,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+  const ALLOWED_TYPES = [
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/octet-stream", // some browsers send this for .xlsx
+  ];
+
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
   const regionId = formData.get("regionId") as string | null;
@@ -103,11 +110,23 @@ export async function POST(req: NextRequest) {
   if (!file) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
+  if (file.size > MAX_FILE_SIZE) {
+    return NextResponse.json({ error: "File too large (max 10 MB)" }, { status: 400 });
+  }
+  if (file.type && !ALLOWED_TYPES.includes(file.type)) {
+    const ext = file.name?.split(".").pop()?.toLowerCase();
+    if (ext !== "xls" && ext !== "xlsx") {
+      return NextResponse.json({ error: "Invalid file type — only .xls/.xlsx allowed" }, { status: 400 });
+    }
+  }
   if (!regionId) {
     return NextResponse.json(
       { error: "No region selected" },
       { status: 400 }
     );
+  }
+  if (!UUID_RE.test(regionId)) {
+    return NextResponse.json({ error: "Invalid region ID" }, { status: 400 });
   }
 
   const supabase = createAdminClient();

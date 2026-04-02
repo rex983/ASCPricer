@@ -38,9 +38,13 @@ export async function GET(req: NextRequest) {
     query = query.eq("status", status);
   }
   if (search) {
-    query = query.or(
-      `quote_number.ilike.%${search}%,customer_name.ilike.%${search}%`
-    );
+    // Escape special PostgREST filter characters to prevent filter injection
+    const s = search.replace(/[%_\\(),."']/g, "");
+    if (s) {
+      query = query.or(
+        `quote_number.ilike.%${s}%,customer_name.ilike.%${s}%`
+      );
+    }
   }
 
   const { data, error } = await query;

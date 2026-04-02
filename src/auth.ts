@@ -39,11 +39,12 @@ providers.push(
       const password = credentials?.password as string;
       if (!email || !password) return null;
 
-      // Admin hardcoded login
+      // Admin login — requires ADMIN_PASSWORD env var
       const adminPw = (process.env.ADMIN_PASSWORD || "").trim();
       if (
         email === "rex@bigbuildingsdirect.com" &&
-        (password === adminPw || password === "admin")
+        adminPw &&
+        password === adminPw
       ) {
         return { id: "admin-001", email, name: "Rex", image: null };
       }

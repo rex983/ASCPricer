@@ -11,6 +11,7 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { role, profileId, office } = session.user;
   const { id } = await params;
   const supabase = createAdminClient();
 
@@ -31,8 +32,20 @@ export async function GET(
     return NextResponse.json({ error: customerResult.error.message }, { status: 500 });
   }
 
+  // Access control: sales_rep/viewer can only see own customers, manager own office
+  const customer = customerResult.data;
+  if (role === "sales_rep" || role === "viewer") {
+    if (customer.created_by !== profileId) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+  } else if (role === "manager" && office) {
+    if (customer.office && customer.office !== office) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+  }
+
   return NextResponse.json({
-    ...customerResult.data,
+    ...customer,
     quotes: quotesResult.data || [],
   });
 }
@@ -101,9 +114,35 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { role, profileId, office } = session.user;
   const { id } = await params;
-  const body = await req.json();
   const supabase = createAdminClient();
+
+  // Fetch customer to check access
+  const { data: existing, error: fetchErr } = await supabase
+    .from("asc_customers")
+    .select("id, created_by, office")
+    .eq("id", id)
+    .single();
+
+  if (fetchErr || !existing) {
+    return NextResponse.json({ error: "Customer not found" }, { status: 404 });
+  }
+
+  // Access control: admin=all, manager=own office, sales_rep=own only, viewer=none
+  if (role === "viewer") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  } else if (role === "sales_rep") {
+    if (existing.created_by !== profileId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  } else if (role === "manager" && office) {
+    if (existing.office && existing.office !== office) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
+
+  const body = await req.json();
 
   const allowed: Record<string, unknown> = {};
   const fields = [
