@@ -50,7 +50,8 @@ export async function GET(req: NextRequest) {
   const { data, error } = await query;
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Quotes list error:", error.message);
+    return NextResponse.json({ error: "Failed to load quotes" }, { status: 500 });
   }
 
   return NextResponse.json(data);
@@ -94,6 +95,34 @@ export async function POST(req: NextRequest) {
       { error: "regionId and config are required" },
       { status: 400 }
     );
+  }
+
+  if (!UUID_RE.test(regionId)) {
+    return NextResponse.json({ error: "Invalid region ID" }, { status: 400 });
+  }
+
+  // Validate office if provided
+  const VALID_OFFICES = ["Harbor", "Marion"];
+  if (office && !VALID_OFFICES.includes(office)) {
+    return NextResponse.json({ error: "Invalid office" }, { status: 400 });
+  }
+
+  // Validate BuildingConfig numeric bounds
+  const { width, length, height, taxRate, windRating } = config;
+  if (typeof width !== "number" || width < 12 || width > 60) {
+    return NextResponse.json({ error: "Invalid width" }, { status: 400 });
+  }
+  if (typeof length !== "number" || length < 20 || length > 200) {
+    return NextResponse.json({ error: "Invalid length" }, { status: 400 });
+  }
+  if (typeof height !== "number" || height < 6 || height > 20) {
+    return NextResponse.json({ error: "Invalid height" }, { status: 400 });
+  }
+  if (typeof taxRate !== "number" || taxRate < 0 || taxRate > 0.2) {
+    return NextResponse.json({ error: "Invalid tax rate" }, { status: 400 });
+  }
+  if (typeof windRating !== "number" || windRating < 0 || windRating > 300) {
+    return NextResponse.json({ error: "Invalid wind rating" }, { status: 400 });
   }
 
   const supabase = createAdminClient();
@@ -233,7 +262,8 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (insertError) {
-    return NextResponse.json({ error: insertError.message }, { status: 500 });
+    console.error("Quote insert error:", insertError.message);
+    return NextResponse.json({ error: "Failed to create quote" }, { status: 500 });
   }
 
   return NextResponse.json(quote, { status: 201 });

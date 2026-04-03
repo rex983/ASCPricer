@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({});
     }
     return NextResponse.json(
-      { error: "Failed to load config: " + error.message },
+      { error: "Failed to load config" },
       { status: 500 }
     );
   }
@@ -83,7 +83,7 @@ export async function PUT(req: NextRequest) {
 
   if (error) {
     return NextResponse.json(
-      { error: "Failed to update config: " + error.message },
+      { error: "Failed to update config" },
       { status: 500 }
     );
   }

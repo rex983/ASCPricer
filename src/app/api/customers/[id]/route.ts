@@ -29,7 +29,8 @@ export async function GET(
     if (customerResult.error.code === "PGRST116") {
       return NextResponse.json({ error: "Customer not found" }, { status: 404 });
     }
-    return NextResponse.json({ error: customerResult.error.message }, { status: 500 });
+    console.error("Customer fetch error:", customerResult.error.message);
+    return NextResponse.json({ error: "Database operation failed" }, { status: 500 });
   }
 
   // Access control: sales_rep/viewer can only see own customers, manager own office
@@ -99,7 +100,8 @@ export async function DELETE(
     .eq("id", id);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Customer operation error:", error.message);
+    return NextResponse.json({ error: "Database operation failed" }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });
@@ -164,7 +166,8 @@ export async function PATCH(
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Customer operation error:", error.message);
+    return NextResponse.json({ error: "Database operation failed" }, { status: 500 });
   }
 
   return NextResponse.json(data);

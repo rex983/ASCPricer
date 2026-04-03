@@ -4,9 +4,8 @@ import Credentials from "next-auth/providers/credentials";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { UserRole, Office } from "@/types/auth";
 
-const isDev =
-  process.env.NODE_ENV === "development" ||
-  process.env.AUTH_DEV_BYPASS === "true";
+// Dev bypass ONLY when NODE_ENV is literally "development" — never via env flag
+const isDev = process.env.NODE_ENV === "development";
 
 // Only include Google provider if credentials are configured
 const providers = [];
@@ -39,17 +38,17 @@ providers.push(
       const password = credentials?.password as string;
       if (!email || !password) return null;
 
-      // Admin login — requires ADMIN_PASSWORD env var
+      // Admin login — requires ADMIN_PASSWORD env var (min 8 chars)
       const adminPw = (process.env.ADMIN_PASSWORD || "").trim();
       if (
         email === "rex@bigbuildingsdirect.com" &&
-        adminPw &&
+        adminPw.length >= 8 &&
         password === adminPw
       ) {
         return { id: "admin-001", email, name: "Rex", image: null };
       }
 
-      // Dev bypass
+      // Dev bypass — local development only, never in production
       if (isDev) {
         return {
           id: "dev-user-001",
@@ -104,14 +103,21 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
     async jwt({ token, user }) {
       if (user?.email) {
-        // Admin or dev user
-        if (user.email === "rex@bigbuildingsdirect.com" || isDev) {
+        // Hardcoded admin account
+        if (user.email === "rex@bigbuildingsdirect.com" && user.id === "admin-001") {
           token.role = "admin" as UserRole;
-          token.profileId = user.id || "admin-001";
+          token.profileId = "admin-001";
           return token;
         }
 
-        // DB user
+        // Dev user gets admin only in development
+        if (isDev && user.id === "dev-user-001") {
+          token.role = "admin" as UserRole;
+          token.profileId = "dev-user-001";
+          return token;
+        }
+
+        // DB user — look up actual role
         try {
           const supabase = createAdminClient();
           const { data: profile } = await supabase
@@ -124,10 +130,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             token.role = profile.role as UserRole;
             token.profileId = profile.id;
             if (profile.office) token.office = profile.office as Office;
+          } else {
+            // No profile found — default to most restrictive role
+            token.role = "viewer" as UserRole;
           }
         } catch {
-          // fallback
-          token.role = "sales_rep" as UserRole;
+          token.role = "viewer" as UserRole;
         }
       }
       return token;
@@ -143,5 +151,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   session: {
     strategy: "jwt",
+    maxAge: 8 * 60 * 60, // 8 hours
   },
 });

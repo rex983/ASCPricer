@@ -21,7 +21,8 @@ export async function logAudit(entry: AuditEntry) {
       resource_id: entry.resourceId ?? null,
       details: entry.details ?? {},
     });
-  } catch {
-    // Never block the main flow for audit logging
+  } catch (err) {
+    // Never block the main flow, but log the failure
+    console.error("Audit logging failed:", err instanceof Error ? err.message : err);
   }
 }
