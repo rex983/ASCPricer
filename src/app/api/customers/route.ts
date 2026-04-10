@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from("asc_customers")
-    .select("id, name, email, phone, city, state, office, created_at")
+    .select("id, name, email, phone, city, state, office, assigned_rep_id, created_at")
     .order("name", { ascending: true })
     .limit(200);
 
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { name, email, phone, address, city, state, zip, notes, office } =
+  const { name, email, phone, address, city, state, zip, notes, office, assigned_rep_id } =
     body as {
       name: string;
       email?: string;
@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
       zip?: string;
       notes?: string;
       office: string;
+      assigned_rep_id?: string;
     };
 
   if (!name || !office) {
@@ -86,6 +87,11 @@ export async function POST(req: NextRequest) {
     ? session.user.profileId
     : null;
 
+  let assignedRep: string | null = null;
+  if (assigned_rep_id) {
+    if (UUID_RE.test(assigned_rep_id)) assignedRep = assigned_rep_id;
+  }
+
   const { data, error } = await supabase
     .from("asc_customers")
     .insert({
@@ -99,6 +105,7 @@ export async function POST(req: NextRequest) {
       notes: notes || null,
       office,
       created_by: createdBy,
+      assigned_rep_id: assignedRep,
     })
     .select()
     .single();

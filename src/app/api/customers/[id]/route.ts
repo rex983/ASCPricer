@@ -15,14 +15,19 @@ export async function GET(
   const { id } = await params;
   const supabase = createAdminClient();
 
-  // Fetch customer and their quotes in parallel
-  const [customerResult, quotesResult] = await Promise.all([
+  // Fetch customer, quotes, and assigned rep in parallel
+  const [customerResult, quotesResult, repsResult] = await Promise.all([
     supabase.from("asc_customers").select("*").eq("id", id).single(),
     supabase
       .from("asc_quotes")
       .select("id, quote_number, status, subtotal, total, created_at")
       .eq("customer_id", id)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("asc_sales_reps")
+      .select("id, name")
+      .eq("is_active", true)
+      .order("name"),
   ]);
 
   if (customerResult.error) {
@@ -45,9 +50,17 @@ export async function GET(
     }
   }
 
+  // Find assigned rep name
+  const allReps = repsResult.data || [];
+  const assignedRep = customer.assigned_rep_id
+    ? allReps.find((r) => r.id === customer.assigned_rep_id) || null
+    : null;
+
   return NextResponse.json({
     ...customer,
     quotes: quotesResult.data || [],
+    assigned_rep: assignedRep,
+    available_reps: allReps,
   });
 }
 
@@ -152,6 +165,12 @@ export async function PATCH(
   ];
   for (const f of fields) {
     if (f in body) allowed[f] = body[f];
+  }
+  if ("assigned_rep_id" in body) {
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    allowed.assigned_rep_id = body.assigned_rep_id && UUID_RE.test(body.assigned_rep_id)
+      ? body.assigned_rep_id
+      : null;
   }
 
   if (Object.keys(allowed).length === 0) {

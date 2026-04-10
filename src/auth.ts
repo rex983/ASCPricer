@@ -95,6 +95,27 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       if (account?.provider === "google") {
         if (!user.email.endsWith("@bigbuildingsdirect.com")) return false;
+
+        // Auto-provision a profile row for Google Workspace users if one doesn't exist
+        try {
+          const supabase = createAdminClient();
+          const { data: existing } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("email", user.email)
+            .single();
+
+          if (!existing) {
+            await supabase.from("profiles").insert({
+              email: user.email,
+              name: user.name || user.email.split("@")[0],
+              role: "viewer",
+            });
+          }
+        } catch {
+          // Non-blocking — profile will be created on next sign-in if this fails
+        }
+
         return true;
       }
 

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Calculator, FileText, Upload, Map, History, SlidersHorizontal, Users } from "lucide-react";
+import { Calculator, FileText, Upload, Map, History, SlidersHorizontal, Users, LayoutDashboard, UsersRound } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -20,12 +20,14 @@ import { UserNav } from "@/components/layout/user-nav";
 import { Logo } from "@/components/layout/logo";
 
 const navItems = [
+  { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Calculator", href: "/calculator", icon: Calculator },
   { title: "Quotes", href: "/quotes", icon: FileText },
   { title: "Customers", href: "/customers", icon: Users },
 ];
 
 const adminItems = [
+  { title: "Team", href: "/admin/sales-reps", icon: UsersRound },
   { title: "Upload Pricing", href: "/admin/upload", icon: Upload },
   { title: "Regions", href: "/admin/regions", icon: Map },
   { title: "Variables", href: "/admin/variables", icon: SlidersHorizontal },
