@@ -25,6 +25,44 @@ if (process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET) {
   );
 }
 
+// BBD Launcher SSO — accepts email from verified SSO callback
+providers.push(
+  Credentials({
+    id: "bbd-sso",
+    name: "BBD SSO",
+    credentials: {
+      email: { type: "text" },
+    },
+    async authorize(credentials) {
+      const email = credentials?.email as string;
+      if (!email) return null;
+
+      // Only accept @bigbuildingsdirect.com emails
+      if (!email.endsWith("@bigbuildingsdirect.com")) return null;
+
+      try {
+        const supabase = createAdminClient();
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id, email, name, role")
+          .eq("email", email)
+          .single();
+
+        if (!profile) return null;
+
+        return {
+          id: profile.id,
+          email: profile.email,
+          name: profile.name || null,
+          image: null,
+        };
+      } catch {
+        return null;
+      }
+    },
+  })
+);
+
 providers.push(
   Credentials({
     id: "credentials",
