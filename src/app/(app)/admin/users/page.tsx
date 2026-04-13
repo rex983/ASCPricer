@@ -11,6 +11,8 @@ import {
   Search,
   ShieldCheck,
   ShieldAlert,
+  RefreshCw,
+  CheckCircle2,
 } from "lucide-react";
 import { AppHeader } from "@/components/layout/app-header";
 import { Button } from "@/components/ui/button";
@@ -110,6 +112,13 @@ export default function UsersPage() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [officeFilter, setOfficeFilter] = useState("all");
 
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{
+    total: number;
+    created: number;
+    skipped: number;
+  } | null>(null);
+
   const [form, setForm] = useState(emptyForm);
 
   const set = (field: string, value: string) =>
@@ -131,6 +140,27 @@ export default function UsersPage() {
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      const res = await fetch("/api/admin/users/sync-workspace", {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Sync failed");
+        return;
+      }
+      setSyncResult({ total: data.total, created: data.created, skipped: data.skipped });
+      await fetchUsers();
+    } catch {
+      alert("Sync failed — check console");
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const openCreate = () => {
     setEditingUser(null);
@@ -265,6 +295,23 @@ export default function UsersPage() {
             ))}
           </div>
 
+          {/* Sync Result Banner */}
+          {syncResult && (
+            <div className="flex items-center gap-2 rounded-lg border border-green-300 bg-green-50 px-4 py-3 dark:border-green-700 dark:bg-green-950/30">
+              <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <span className="text-sm text-green-800 dark:text-green-200">
+                Workspace sync complete: {syncResult.total} users found, {syncResult.created} new profiles created, {syncResult.skipped} already existed.
+              </span>
+              <button
+                type="button"
+                onClick={() => setSyncResult(null)}
+                className="ml-auto text-xs text-green-600 hover:underline dark:text-green-400"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -303,10 +350,20 @@ export default function UsersPage() {
               </Select>
             </div>
             {isAdmin && (
-              <Button onClick={openCreate}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add User
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={handleSync} disabled={syncing}>
+                  {syncing ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                  )}
+                  {syncing ? "Syncing..." : "Sync Google Workspace"}
+                </Button>
+                <Button onClick={openCreate}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add User
+                </Button>
+              </div>
             )}
           </div>
 
