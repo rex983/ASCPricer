@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { useSession } from "next-auth/react";
+import Link from "next/link";
 import {
   Plus,
   Pencil,
@@ -19,6 +20,7 @@ import {
 import { AppHeader } from "@/components/layout/app-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -44,16 +46,29 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatCurrency } from "@/lib/utils";
 import type { UserRole, Office } from "@/types/auth";
 
-interface Profile {
+type EmployeeRole = "sales_rep" | "sales_manager" | "bst";
+
+interface UserProfile {
   id: string;
   email: string;
   name: string | null;
   role: UserRole;
   office: Office | null;
   created_at: string;
-  has_sales_rep: boolean;
+  // Sales rep data (null if no linked rep)
+  rep_id: string | null;
+  phone: string | null;
+  territory: string | null;
+  commission_rate: number | null;
+  employee_role: EmployeeRole | null;
+  is_active: boolean | null;
+  // Stats
+  customer_count: number;
+  quote_count: number;
+  quote_total: number;
 }
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -77,6 +92,12 @@ const ROLE_ICONS: Record<UserRole, typeof Shield> = {
   viewer: Shield,
 };
 
+const EMPLOYEE_ROLE_LABELS: Record<string, string> = {
+  sales_rep: "Sales Rep",
+  sales_manager: "Sales Manager",
+  bst: "BST",
+};
+
 const ROLE_FILTERS = [
   { value: "all", label: "All Roles" },
   { value: "admin", label: "Admins" },
@@ -97,22 +118,27 @@ const emptyForm = {
   email: "",
   role: "viewer" as string,
   office: "" as string,
+  phone: "",
+  employee_role: "" as string,
+  territory: "",
+  commission_rate: "0",
 };
 
 export default function UsersPage() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "admin";
 
-  const [users, setUsers] = useState<Profile[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<Profile | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<Profile | null>(null);
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<UserProfile | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [officeFilter, setOfficeFilter] = useState("all");
+  const [toggling, setToggling] = useState<string | null>(null);
 
   const [importing, setImporting] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -124,6 +150,7 @@ export default function UsersPage() {
   } | null>(null);
 
   const [form, setForm] = useState(emptyForm);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const set = (field: string, value: string) =>
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -145,13 +172,27 @@ export default function UsersPage() {
     fetchUsers();
   }, [fetchUsers]);
 
+  const handleToggle = async (user: UserProfile) => {
+    if (!user.rep_id) return;
+    setToggling(user.id);
+    try {
+      await fetch(`/api/admin/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: !user.is_active }),
+      });
+      await fetchUsers();
+    } finally {
+      setToggling(null);
+    }
+  };
+
   const handleCsvUpload = async (file: File) => {
     setImporting(true);
     setImportResult(null);
     try {
       const formData = new FormData();
       formData.append("file", file);
-
       const res = await fetch("/api/admin/users/import", {
         method: "POST",
         body: formData,
@@ -189,13 +230,17 @@ export default function UsersPage() {
     setDialogOpen(true);
   };
 
-  const openEdit = (user: Profile) => {
+  const openEdit = (user: UserProfile) => {
     setEditingUser(user);
     setForm({
       name: user.name || "",
       email: user.email,
       role: user.role,
       office: user.office || "",
+      phone: user.phone || "",
+      employee_role: user.employee_role || "",
+      territory: user.territory || "",
+      commission_rate: String(user.commission_rate ?? 0),
     });
     setError(null);
     setDialogOpen(true);
@@ -224,9 +269,12 @@ export default function UsersPage() {
         name: form.name.trim(),
         email: form.email.trim(),
         office: form.office || null,
+        phone: form.phone || null,
+        territory: form.territory || null,
+        commission_rate: parseFloat(form.commission_rate) || 0,
+        employee_role: form.employee_role || null,
       };
 
-      // Only admins can set roles; managers editing shouldn't send role
       if (isAdmin) {
         payload.role = form.role;
       }
@@ -281,10 +329,12 @@ export default function UsersPage() {
     const s = search.toLowerCase();
     return (
       (u.name || "").toLowerCase().includes(s) ||
-      u.email.toLowerCase().includes(s)
+      u.email.toLowerCase().includes(s) ||
+      (u.territory || "").toLowerCase().includes(s)
     );
   });
 
+  const activeCount = users.filter((u) => u.is_active === true).length;
   const roleCounts = users.reduce(
     (acc, u) => {
       acc[u.role] = (acc[u.role] || 0) + 1;
@@ -304,10 +354,11 @@ export default function UsersPage() {
     <>
       <AppHeader title="User Management" />
       <div className="flex-1 p-6">
-        <div className="mx-auto max-w-6xl space-y-4">
+        <div className="mx-auto max-w-7xl space-y-4">
           {/* Stats */}
           <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="secondary">{users.length} total</Badge>
+            <Badge variant="secondary">{activeCount} active</Badge>
             {Object.entries(roleCounts).map(([role, count]) => (
               <Badge key={role} variant="outline" className="text-xs">
                 {ROLE_LABELS[role as UserRole] || role}: {count}
@@ -333,7 +384,7 @@ export default function UsersPage() {
                     ? "text-amber-800 dark:text-amber-200"
                     : "text-green-800 dark:text-green-200"
                 }`}>
-                  CSV import: {importResult.created} created, {importResult.skipped} skipped (already exist){importResult.errors.length > 0 && `, ${importResult.errors.length} failed`}.
+                  CSV import: {importResult.created} created, {importResult.skipped} skipped{importResult.errors.length > 0 && `, ${importResult.errors.length} failed`}.
                 </span>
                 {importResult.errors.length > 0 && (
                   <ul className="text-xs text-amber-700 dark:text-amber-300 space-y-0.5">
@@ -426,12 +477,16 @@ export default function UsersPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">Active</TableHead>
                     <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
                     <TableHead>Role</TableHead>
+                    <TableHead>Position</TableHead>
                     <TableHead>Office</TableHead>
-                    <TableHead>Sales Rep</TableHead>
-                    <TableHead>Joined</TableHead>
+                    <TableHead>Territory</TableHead>
+                    <TableHead className="text-right">Commission</TableHead>
+                    <TableHead className="text-right">Customers</TableHead>
+                    <TableHead className="text-right">Quotes</TableHead>
+                    <TableHead className="text-right">Total Sales</TableHead>
                     <TableHead className="w-20" />
                   </TableRow>
                 </TableHeader>
@@ -440,27 +495,62 @@ export default function UsersPage() {
                     const RoleIcon = ROLE_ICONS[user.role];
                     const isSelf = user.id === session?.user?.profileId;
                     const isPrimaryAdmin = user.email === "rex@bigbuildingsdirect.com";
+                    const hasRep = user.rep_id !== null;
 
                     return (
-                      <TableRow key={user.id}>
+                      <TableRow
+                        key={user.id}
+                        className={hasRep && user.is_active === false ? "opacity-50" : ""}
+                      >
+                        <TableCell>
+                          {hasRep ? (
+                            toggling === user.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Switch
+                                checked={user.is_active ?? false}
+                                onCheckedChange={() => handleToggle(user)}
+                                className="scale-90"
+                              />
+                            )
+                          ) : (
+                            <span className="text-muted-foreground text-xs">---</span>
+                          )}
+                        </TableCell>
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
-                            {user.name || user.email.split("@")[0]}
+                            {hasRep ? (
+                              <Link
+                                href={`/admin/sales-reps/${user.rep_id}`}
+                                className="text-primary hover:underline"
+                              >
+                                {user.name || user.email.split("@")[0]}
+                              </Link>
+                            ) : (
+                              <span>{user.name || user.email.split("@")[0]}</span>
+                            )}
                             {isSelf && (
                               <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                                 You
                               </Badge>
                             )}
                           </div>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {user.email}
+                          <div className="text-xs text-muted-foreground">{user.email}</div>
                         </TableCell>
                         <TableCell>
                           <Badge variant={ROLE_COLORS[user.role]}>
                             <RoleIcon className="mr-1 h-3 w-3" />
                             {ROLE_LABELS[user.role]}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {user.employee_role ? (
+                            <Badge variant="secondary" className="text-xs">
+                              {EMPLOYEE_ROLE_LABELS[user.employee_role] || user.employee_role}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">---</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           {user.office ? (
@@ -470,16 +560,19 @@ export default function UsersPage() {
                           )}
                         </TableCell>
                         <TableCell>
-                          {user.has_sales_rep ? (
-                            <Badge variant="secondary" className="text-xs">
-                              Linked
-                            </Badge>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">---</span>
-                          )}
+                          {user.territory || <span className="text-muted-foreground text-xs">---</span>}
                         </TableCell>
-                        <TableCell className="text-muted-foreground text-xs">
-                          {formatDate(user.created_at)}
+                        <TableCell className="text-right">
+                          {user.commission_rate !== null ? `${user.commission_rate}%` : <span className="text-muted-foreground text-xs">---</span>}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {user.customer_count || <span className="text-muted-foreground text-xs">0</span>}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {user.quote_count || <span className="text-muted-foreground text-xs">0</span>}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {user.quote_total > 0 ? formatCurrency(user.quote_total) : <span className="text-muted-foreground text-xs">$0</span>}
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
@@ -516,17 +609,64 @@ export default function UsersPage() {
         </div>
       </div>
 
+      {/* Import CSV Dialog */}
+      <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Import Users from CSV</DialogTitle>
+            <DialogDescription>
+              Upload a CSV file with columns: <strong>name</strong>, <strong>email</strong> (required), and optionally <strong>role</strong> (admin, manager, sales_rep, viewer) and <strong>office</strong> (Harbor, Marion). Existing emails will be skipped.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="flex items-center justify-center w-full">
+              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                  {importing ? (
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-2" />
+                  ) : (
+                    <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+                  )}
+                  <p className="text-sm text-muted-foreground">
+                    {importing ? "Importing..." : "Click to upload or drag & drop"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">.csv files only</p>
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv"
+                  className="hidden"
+                  disabled={importing}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleCsvUpload(file);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={downloadTemplate}>
+              <Download className="mr-2 h-3.5 w-3.5" />
+              Download Template
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Create / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>
               {editingUser ? "Edit User" : "Add User"}
             </DialogTitle>
             <DialogDescription>
               {editingUser
-                ? "Update this user's profile and permissions."
-                : "Create a new user profile. They can sign in with Google using this email."}
+                ? "Update this user's profile and team settings."
+                : "Create a new user. Set a position to add them to the sales team."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
@@ -550,7 +690,7 @@ export default function UsersPage() {
               </div>
               {isAdmin && (
                 <div className="space-y-1">
-                  <Label>Role *</Label>
+                  <Label>App Role *</Label>
                   <Select
                     value={form.role}
                     onValueChange={(v) => set("role", v)}
@@ -585,6 +725,57 @@ export default function UsersPage() {
               </div>
             </div>
 
+            {/* Sales Team Section */}
+            <div className="border-t pt-3 mt-3">
+              <p className="text-sm font-medium mb-2">Sales Team</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Position</Label>
+                  <Select
+                    value={form.employee_role || "none"}
+                    onValueChange={(v) => set("employee_role", v === "none" ? "" : v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Not on sales team</SelectItem>
+                      <SelectItem value="sales_rep">Sales Rep</SelectItem>
+                      <SelectItem value="sales_manager">Sales Manager</SelectItem>
+                      <SelectItem value="bst">BST (Customer Service)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label>Phone</Label>
+                  <Input
+                    value={form.phone}
+                    onChange={(e) => set("phone", e.target.value)}
+                    placeholder="(555) 123-4567"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Territory</Label>
+                  <Input
+                    placeholder="e.g. Ohio / Southeast"
+                    value={form.territory}
+                    onChange={(e) => set("territory", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Commission Rate (%)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.5"
+                    value={form.commission_rate}
+                    onChange={(e) => set("commission_rate", e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
           <DialogFooter>
@@ -599,52 +790,6 @@ export default function UsersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Import CSV Dialog */}
-      <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Import Users from CSV</DialogTitle>
-            <DialogDescription>
-              Upload a CSV file with columns: <strong>name</strong>, <strong>email</strong> (required), and optionally <strong>role</strong> (admin, manager, sales_rep, viewer) and <strong>office</strong> (Harbor, Marion). Existing emails will be skipped.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="flex items-center justify-center w-full">
-              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
-                <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                  {importing ? (
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-2" />
-                  ) : (
-                    <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-                  )}
-                  <p className="text-sm text-muted-foreground">
-                    {importing ? "Importing..." : "Click to upload or drag & drop"}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">.csv files only</p>
-                </div>
-                <input
-                  type="file"
-                  accept=".csv"
-                  className="hidden"
-                  disabled={importing}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleCsvUpload(file);
-                    e.target.value = "";
-                  }}
-                />
-              </label>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={downloadTemplate}>
-              <Download className="mr-2 h-3.5 w-3.5" />
-              Download Template
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Delete Confirmation Dialog */}
       <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
         <DialogContent>
@@ -653,7 +798,8 @@ export default function UsersPage() {
             <DialogDescription>
               Are you sure you want to permanently delete{" "}
               <strong>{deleteConfirm?.name || deleteConfirm?.email}</strong>?
-              This action cannot be undone.
+              {deleteConfirm?.rep_id && " This will also remove their sales rep profile."}
+              {" "}This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           {error && <p className="text-sm text-destructive">{error}</p>}

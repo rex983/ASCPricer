@@ -6,8 +6,9 @@ import { logAudit } from "@/lib/audit";
 const ALLOWED_ROLES = ["admin", "manager"];
 const VALID_USER_ROLES = ["admin", "manager", "sales_rep", "viewer"];
 const VALID_OFFICES = ["Harbor", "Marion"];
+const VALID_EMPLOYEE_ROLES = ["sales_rep", "sales_manager", "bst"];
 
-/** GET /api/admin/users — list all profiles */
+/** GET /api/admin/users — list all profiles with sales rep data + stats */
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user || !ALLOWED_ROLES.includes(session.user.role)) {
@@ -36,26 +37,94 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Check which profiles are linked to a sales rep
-  const profileIds = (data ?? []).map((p) => p.id).filter(Boolean);
-  let linkedRepIds: Set<string> = new Set();
+  const profiles = data ?? [];
+  const profileIds = profiles.map((p) => p.id).filter(Boolean);
+
+  // Fetch linked sales reps
+  let repsMap: Record<string, {
+    id: string;
+    phone: string | null;
+    territory: string | null;
+    commission_rate: number;
+    employee_role: string;
+    is_active: boolean;
+  }> = {};
+
   if (profileIds.length > 0) {
     const { data: reps } = await supabase
       .from("asc_sales_reps")
-      .select("profile_id")
+      .select("id, profile_id, phone, territory, commission_rate, employee_role, is_active")
       .in("profile_id", profileIds);
-    linkedRepIds = new Set((reps ?? []).map((r) => r.profile_id).filter(Boolean));
+
+    for (const r of reps ?? []) {
+      if (r.profile_id) {
+        repsMap[r.profile_id] = {
+          id: r.id,
+          phone: r.phone,
+          territory: r.territory,
+          commission_rate: r.commission_rate,
+          employee_role: r.employee_role,
+          is_active: r.is_active,
+        };
+      }
+    }
   }
 
-  const enriched = (data ?? []).map((p) => ({
-    ...p,
-    has_sales_rep: linkedRepIds.has(p.id),
-  }));
+  // Fetch customer counts per sales rep
+  const repIds = Object.values(repsMap).map((r) => r.id);
+  const customerCountMap: Record<string, number> = {};
+  if (repIds.length > 0) {
+    const { data: customers } = await supabase
+      .from("asc_customers")
+      .select("assigned_rep_id");
+
+    for (const c of customers ?? []) {
+      if (c.assigned_rep_id) {
+        customerCountMap[c.assigned_rep_id] = (customerCountMap[c.assigned_rep_id] || 0) + 1;
+      }
+    }
+  }
+
+  // Fetch quote stats per profile (quotes use created_by = profile_id)
+  const quoteStatsMap: Record<string, { count: number; total: number }> = {};
+  if (profileIds.length > 0) {
+    const { data: quotes } = await supabase
+      .from("asc_quotes")
+      .select("created_by, total");
+
+    for (const q of quotes ?? []) {
+      if (q.created_by) {
+        if (!quoteStatsMap[q.created_by]) {
+          quoteStatsMap[q.created_by] = { count: 0, total: 0 };
+        }
+        quoteStatsMap[q.created_by].count += 1;
+        quoteStatsMap[q.created_by].total += q.total || 0;
+      }
+    }
+  }
+
+  const enriched = profiles.map((p) => {
+    const rep = repsMap[p.id] ?? null;
+    return {
+      ...p,
+      // Sales rep fields (null if no linked rep)
+      rep_id: rep?.id ?? null,
+      phone: rep?.phone ?? null,
+      territory: rep?.territory ?? null,
+      commission_rate: rep?.commission_rate ?? null,
+      employee_role: rep?.employee_role ?? null,
+      is_active: rep?.is_active ?? null,
+      // Stats
+      customer_count: rep ? (customerCountMap[rep.id] || 0) : 0,
+      quote_count: quoteStatsMap[p.id]?.count || 0,
+      quote_total: quoteStatsMap[p.id]?.total || 0,
+    };
+  });
 
   return NextResponse.json({ users: enriched, total: count ?? 0 });
 }
 
-/** POST /api/admin/users — create a new profile (invite user) */
+/** POST /api/admin/users — create a new profile + optionally a linked sales rep */
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user || session.user.role !== "admin") {
@@ -63,11 +132,15 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { name, email, role, office } = body as {
+  const { name, email, role, office, phone, territory, commission_rate, employee_role } = body as {
     name: string;
     email: string;
     role: string;
     office?: string;
+    phone?: string;
+    territory?: string;
+    commission_rate?: number;
+    employee_role?: string;
   };
 
   if (!name?.trim()) {
@@ -99,7 +172,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "A user with this email already exists" }, { status: 409 });
   }
 
-  const { data, error } = await supabase
+  const { data: profile, error } = await supabase
     .from("profiles")
     .insert({
       name: name.trim(),
@@ -114,14 +187,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // If employee_role is provided, create a linked sales rep
+  if (employee_role && VALID_EMPLOYEE_ROLES.includes(employee_role)) {
+    await supabase.from("asc_sales_reps").insert({
+      profile_id: profile.id,
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone || null,
+      office: office || "Harbor",
+      territory: territory || null,
+      commission_rate: commission_rate ?? 0,
+      employee_role,
+      is_active: true,
+    });
+  }
+
   await logAudit({
     userId: session.user.profileId,
     userEmail: session.user.email,
     action: "create_user",
     resourceType: "profile",
-    resourceId: data.id,
-    details: { name: data.name, email: data.email, role: data.role, office: data.office },
+    resourceId: profile.id,
+    details: { name: profile.name, email: profile.email, role: profile.role, office: profile.office, employee_role },
   });
 
-  return NextResponse.json(data, { status: 201 });
+  return NextResponse.json(profile, { status: 201 });
 }

@@ -8,8 +8,9 @@ type Ctx = { params: Promise<{ id: string }> };
 const ALLOWED_ROLES = ["admin", "manager"];
 const VALID_USER_ROLES = ["admin", "manager", "sales_rep", "viewer"];
 const VALID_OFFICES = ["Harbor", "Marion"];
+const VALID_EMPLOYEE_ROLES = ["sales_rep", "sales_manager", "bst"];
 
-/** PATCH /api/admin/users/[id] — update a user profile */
+/** PATCH /api/admin/users/[id] — update profile + linked sales rep */
 export async function PATCH(req: NextRequest, ctx: Ctx) {
   const session = await auth();
   if (!session?.user || !ALLOWED_ROLES.includes(session.user.role)) {
@@ -18,24 +19,27 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
   const { id } = await ctx.params;
   const body = await req.json();
-  const updates: Record<string, unknown> = {};
+  const profileUpdates: Record<string, unknown> = {};
+  const repUpdates: Record<string, unknown> = {};
 
+  // Profile fields
   if (body.name !== undefined) {
     if (!body.name?.trim()) {
       return NextResponse.json({ error: "Name cannot be empty" }, { status: 400 });
     }
-    updates.name = body.name.trim();
+    profileUpdates.name = body.name.trim();
+    repUpdates.name = body.name.trim();
   }
 
   if (body.email !== undefined) {
     if (!body.email?.trim()) {
       return NextResponse.json({ error: "Email cannot be empty" }, { status: 400 });
     }
-    updates.email = body.email.trim().toLowerCase();
+    profileUpdates.email = body.email.trim().toLowerCase();
+    repUpdates.email = body.email.trim().toLowerCase();
   }
 
   if (body.role !== undefined) {
-    // Only admins can change roles
     if (session.user.role !== "admin") {
       return NextResponse.json({ error: "Only admins can change user roles" }, { status: 403 });
     }
@@ -45,17 +49,36 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
         { status: 400 }
       );
     }
-    updates.role = body.role;
+    profileUpdates.role = body.role;
   }
 
   if (body.office !== undefined) {
     if (body.office && !VALID_OFFICES.includes(body.office)) {
       return NextResponse.json({ error: "Office must be Harbor or Marion" }, { status: 400 });
     }
-    updates.office = body.office || null;
+    profileUpdates.office = body.office || null;
+    repUpdates.office = body.office || null;
   }
 
-  if (Object.keys(updates).length === 0) {
+  // Sales rep fields
+  if (body.phone !== undefined) repUpdates.phone = body.phone || null;
+  if (body.territory !== undefined) repUpdates.territory = body.territory || null;
+  if (body.commission_rate !== undefined) repUpdates.commission_rate = body.commission_rate;
+  if (body.is_active !== undefined) repUpdates.is_active = Boolean(body.is_active);
+  if (body.employee_role !== undefined) {
+    if (body.employee_role && !VALID_EMPLOYEE_ROLES.includes(body.employee_role)) {
+      return NextResponse.json(
+        { error: `Employee role must be one of: ${VALID_EMPLOYEE_ROLES.join(", ")}` },
+        { status: 400 }
+      );
+    }
+    repUpdates.employee_role = body.employee_role;
+  }
+
+  const hasProfileUpdates = Object.keys(profileUpdates).length > 0;
+  const hasRepUpdates = Object.keys(repUpdates).length > 0;
+
+  if (!hasProfileUpdates && !hasRepUpdates) {
     return NextResponse.json({ error: "No updates provided" }, { status: 400 });
   }
 
@@ -74,23 +97,23 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     }
   }
 
-  // Prevent editing the hardcoded admin
+  // Prevent demoting the primary admin
   const { data: targetUser } = await supabase
     .from("profiles")
-    .select("email")
+    .select("email, name")
     .eq("id", id)
     .single();
 
-  if (targetUser?.email === "rex@bigbuildingsdirect.com" && updates.role && updates.role !== "admin") {
+  if (targetUser?.email === "rex@bigbuildingsdirect.com" && profileUpdates.role && profileUpdates.role !== "admin") {
     return NextResponse.json({ error: "Cannot change the primary admin's role" }, { status: 403 });
   }
 
   // Check email uniqueness if changing email
-  if (updates.email) {
+  if (profileUpdates.email) {
     const { data: dup } = await supabase
       .from("profiles")
       .select("id")
-      .eq("email", updates.email)
+      .eq("email", profileUpdates.email)
       .neq("id", id)
       .maybeSingle();
 
@@ -99,30 +122,72 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     }
   }
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .update(updates)
-    .eq("id", id)
-    .select()
-    .single();
+  // Update profile
+  let profile = null;
+  if (hasProfileUpdates) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .update(profileUpdates)
+      .eq("id", id)
+      .select()
+      .single();
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    profile = data;
+  }
+
+  // Update or create linked sales rep
+  if (hasRepUpdates) {
+    const { data: existingRep } = await supabase
+      .from("asc_sales_reps")
+      .select("id")
+      .eq("profile_id", id)
+      .maybeSingle();
+
+    if (existingRep) {
+      // Update existing rep
+      await supabase
+        .from("asc_sales_reps")
+        .update(repUpdates)
+        .eq("profile_id", id);
+    } else if (body.employee_role && VALID_EMPLOYEE_ROLES.includes(body.employee_role)) {
+      // Create new rep — need full required fields
+      const currentProfile = profile || targetUser;
+      await supabase.from("asc_sales_reps").insert({
+        profile_id: id,
+        name: (repUpdates.name as string) || currentProfile?.name || "",
+        email: (repUpdates.email as string) || currentProfile?.email || "",
+        phone: repUpdates.phone ?? null,
+        office: (repUpdates.office as string) || "Harbor",
+        territory: repUpdates.territory ?? null,
+        commission_rate: (repUpdates.commission_rate as number) ?? 0,
+        employee_role: body.employee_role,
+        is_active: true,
+      });
+    }
   }
 
   await logAudit({
     userId: session.user.profileId,
     userEmail: session.user.email,
-    action: "update_user",
+    action: body.is_active !== undefined ? "toggle_user" : "update_user",
     resourceType: "profile",
     resourceId: id,
-    details: updates,
+    details: { ...profileUpdates, ...repUpdates },
   });
 
-  return NextResponse.json(data);
+  // Re-fetch the profile for the response
+  if (!profile) {
+    const { data } = await supabase.from("profiles").select("*").eq("id", id).single();
+    profile = data;
+  }
+
+  return NextResponse.json(profile);
 }
 
-/** DELETE /api/admin/users/[id] — permanently delete a user profile */
+/** DELETE /api/admin/users/[id] — delete profile + linked sales rep */
 export async function DELETE(_req: NextRequest, ctx: Ctx) {
   const session = await auth();
   if (!session?.user || session.user.role !== "admin") {
@@ -132,12 +197,10 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
   const { id } = await ctx.params;
   const supabase = createAdminClient();
 
-  // Prevent deleting yourself
   if (id === session.user.profileId) {
     return NextResponse.json({ error: "Cannot delete your own account" }, { status: 400 });
   }
 
-  // Prevent deleting the primary admin
   const { data: target } = await supabase
     .from("profiles")
     .select("email, name")
@@ -152,20 +215,28 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "Cannot delete the primary admin account" }, { status: 403 });
   }
 
-  // Check for linked sales rep
-  const { count: repCount } = await supabase
+  // Check for assigned customers (via sales rep)
+  const { data: rep } = await supabase
     .from("asc_sales_reps")
-    .select("id", { count: "exact", head: true })
-    .eq("profile_id", id);
+    .select("id")
+    .eq("profile_id", id)
+    .maybeSingle();
 
-  if (repCount && repCount > 0) {
-    return NextResponse.json(
-      { error: "Cannot delete: this user is linked to a sales rep. Remove the link first." },
-      { status: 409 }
-    );
+  if (rep) {
+    const { count: custCount } = await supabase
+      .from("asc_customers")
+      .select("id", { count: "exact", head: true })
+      .eq("assigned_rep_id", rep.id);
+
+    if (custCount && custCount > 0) {
+      return NextResponse.json(
+        { error: `Cannot delete: ${custCount} customer(s) assigned. Reassign them first.` },
+        { status: 409 }
+      );
+    }
   }
 
-  // Check for quotes created by this user
+  // Check for quotes
   const { count: quoteCount } = await supabase
     .from("asc_quotes")
     .select("id", { count: "exact", head: true })
@@ -178,6 +249,12 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
     );
   }
 
+  // Delete linked sales rep first (if exists)
+  if (rep) {
+    await supabase.from("asc_sales_reps").delete().eq("id", rep.id);
+  }
+
+  // Delete profile
   const { error } = await supabase.from("profiles").delete().eq("id", id);
 
   if (error) {
