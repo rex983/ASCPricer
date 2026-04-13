@@ -223,6 +223,35 @@ export default function UsersPage() {
     URL.revokeObjectURL(url);
   };
 
+  const downloadCsv = () => {
+    const escape = (v: string) => (v.includes(",") || v.includes('"') ? `"${v.replace(/"/g, '""')}"` : v);
+    const header = "name,email,role,office,position,phone,territory,commission_rate,active,customers,quotes,total_sales";
+    const rows = filtered.map((u) =>
+      [
+        escape(u.name || ""),
+        escape(u.email),
+        u.role,
+        u.office || "",
+        u.employee_role ? (EMPLOYEE_ROLE_LABELS[u.employee_role] || u.employee_role) : "",
+        u.phone || "",
+        escape(u.territory || ""),
+        u.commission_rate !== null ? String(u.commission_rate) : "",
+        u.is_active !== null ? (u.is_active ? "yes" : "no") : "",
+        String(u.customer_count),
+        String(u.quote_count),
+        String(u.quote_total),
+      ].join(",")
+    );
+    const csv = [header, ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `users-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const openCreate = () => {
     setEditingUser(null);
     setForm(emptyForm);
@@ -447,6 +476,10 @@ export default function UsersPage() {
             </div>
             {isAdmin && (
               <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={downloadCsv}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Download CSV
+                </Button>
                 <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
                   <Upload className="mr-2 h-4 w-4" />
                   Import CSV
