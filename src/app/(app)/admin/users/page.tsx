@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Download,
+  Eye,
 } from "lucide-react";
 import { AppHeader } from "@/components/layout/app-header";
 import { Button } from "@/components/ui/button";
@@ -127,6 +128,8 @@ const emptyForm = {
 export default function UsersPage() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "admin";
+  const canImpersonate =
+    session?.user?.role === "admin" || session?.user?.role === "manager";
 
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -139,6 +142,7 @@ export default function UsersPage() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [officeFilter, setOfficeFilter] = useState("all");
   const [toggling, setToggling] = useState<string | null>(null);
+  const [viewingAs, setViewingAs] = useState<string | null>(null);
 
   const [importing, setImporting] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -170,6 +174,27 @@ export default function UsersPage() {
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+
+  const handleViewAs = async (user: UserProfile) => {
+    setViewingAs(user.id);
+    try {
+      const res = await fetch("/api/view-as", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetProfileId: user.id }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || "Failed to start view-as");
+        setViewingAs(null);
+        return;
+      }
+      window.location.href = "/dashboard";
+    } catch {
+      alert("Failed to start view-as");
+      setViewingAs(null);
+    }
+  };
 
   const handleToggle = async (user: UserProfile) => {
     if (!user.rep_id) return;
@@ -608,6 +633,24 @@ export default function UsersPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
+                            {canImpersonate &&
+                              !isSelf &&
+                              (user.role === "sales_rep" || user.role === "viewer") && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  title={`View as ${user.name || user.email}`}
+                                  disabled={viewingAs === user.id}
+                                  onClick={() => handleViewAs(user)}
+                                >
+                                  {viewingAs === user.id ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Eye className="h-3.5 w-3.5" />
+                                  )}
+                                </Button>
+                              )}
                             <Button
                               variant="ghost"
                               size="icon"

@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getImpersonationContext } from "@/lib/impersonation";
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) {
+  const ctx = await getImpersonationContext();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const supabase = createAdminClient();
-  const { role, profileId, office } = session.user;
+  const { role, profileId, office } = ctx.effective;
   const search = req.nextUrl.searchParams.get("search");
 
   let query = supabase

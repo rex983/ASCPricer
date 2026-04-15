@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getImpersonationContext } from "@/lib/impersonation";
 
 /** GET /api/dashboard — sales rep dashboard stats */
 export async function GET() {
-  const session = await auth();
-  if (!session?.user) {
+  const ctx = await getImpersonationContext();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { role, profileId, office } = session.user;
+  const { role, profileId, office } = ctx.effective;
   const supabase = createAdminClient();
 
   // Build customer query based on role

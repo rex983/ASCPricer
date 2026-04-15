@@ -2,18 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { calculatePrice } from "@/lib/pricing/engine";
+import { getImpersonationContext } from "@/lib/impersonation";
 import type { BuildingConfig, PricingMatrices } from "@/types/pricing";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) {
+  const ctx = await getImpersonationContext();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const supabase = createAdminClient();
-  const { role, profileId, office } = session.user;
+  const { role, profileId, office } = ctx.effective;
   const url = req.nextUrl;
   const status = url.searchParams.get("status");
   const search = url.searchParams.get("search");

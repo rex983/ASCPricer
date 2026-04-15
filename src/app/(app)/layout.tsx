@@ -1,5 +1,6 @@
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
+import { ImpersonationBanner } from "@/components/layout/impersonation-banner";
 import { SessionProvider } from "@/components/providers/session-provider";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -7,7 +8,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <SessionProvider>
       <SidebarProvider>
         <AppSidebar />
-        <SidebarInset>{children}</SidebarInset>
+        <SidebarInset>
+          <ImpersonationBanner />
+          {children}
+        </SidebarInset>
       </SidebarProvider>
     </SessionProvider>
   );
