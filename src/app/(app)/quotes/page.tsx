@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { canDeleteRecord, formatCurrency, formatDate, STATUS_COLORS } from "@/lib/utils";
+import { formatCurrency, formatDate, STATUS_COLORS } from "@/lib/utils";
 import { FileText, Search, Trash2 } from "lucide-react";
 
 interface QuoteSummary {
@@ -33,7 +33,7 @@ export default function QuotesPage() {
 
   const role = session?.user?.role;
   const showOffice = role === "admin" || role === "manager";
-  const canDelete = canDeleteRecord(role);
+  const canDelete = role === "admin" || role === "manager";
 
   const fetchQuotes = useCallback(() => {
     setLoading(true);

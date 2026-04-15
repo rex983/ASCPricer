@@ -52,8 +52,14 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { role, profileId, office } = session.user;
+  const { role, office } = session.user;
   const { id } = await params;
+
+  // Only admins and managers may delete quotes.
+  if (role !== "admin" && role !== "manager") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const supabase = createAdminClient();
 
   // Fetch the quote to check access
@@ -67,17 +73,11 @@ export async function DELETE(
     return NextResponse.json({ error: "Quote not found" }, { status: 404 });
   }
 
-  // Access control: admin=all, manager=own office, sales_rep=own only
-  if (role === "sales_rep") {
-    if (quote.created_by !== profileId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-  } else if (role === "manager" && office) {
+  // Managers are still limited to their own office.
+  if (role === "manager" && office) {
     if (quote.office && quote.office !== office) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-  } else if (role === "viewer") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const { error } = await supabase
