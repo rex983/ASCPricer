@@ -1,13 +1,20 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getImpersonationContext } from "@/lib/impersonation";
 
+const ALLOWED_LIMITS = [10, 25, 50, 100] as const;
+
 /** GET /api/dashboard — sales rep dashboard stats */
-export async function GET() {
+export async function GET(req: NextRequest) {
   const ctx = await getImpersonationContext();
   if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const requested = Number(req.nextUrl.searchParams.get("limit"));
+  const recentLimit = (ALLOWED_LIMITS as readonly number[]).includes(requested)
+    ? requested
+    : 10;
 
   const { role, profileId, office } = ctx.effective;
   const supabase = createAdminClient();
@@ -52,9 +59,9 @@ export async function GET() {
     statusCounts[q.status] = (statusCounts[q.status] || 0) + 1;
   }
 
-  // Recent activity (last 10 quotes)
-  const recentQuotes = quotes.slice(0, 10);
-  // Recent customers (last 10)
+  // Recent activity — scope matches role: sales_rep = own, manager = office,
+  // admin = all. Caller picks how many via ?limit=10|25|50|100.
+  const recentQuotes = quotes.slice(0, recentLimit);
   const recentCustomers = customers.slice(0, 10);
 
   // Monthly revenue (last 6 months)
@@ -81,6 +88,7 @@ export async function GET() {
     totalRevenue,
     statusCounts,
     recentQuotes,
+    recentQuotesLimit: recentLimit,
     recentCustomers,
     monthlyRevenue,
   });

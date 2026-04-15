@@ -5,6 +5,13 @@ import Link from "next/link";
 import { AppHeader } from "@/components/layout/app-header";
 import { Badge } from "@/components/ui/badge";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -45,14 +52,18 @@ interface DashboardData {
   }[];
 }
 
+const RECENT_LIMITS = [10, 25, 50, 100] as const;
+type RecentLimit = (typeof RECENT_LIMITS)[number];
+
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [recentLimit, setRecentLimit] = useState<RecentLimit>(10);
 
-  const fetchDashboard = useCallback(async () => {
+  const fetchDashboard = useCallback(async (limit: RecentLimit) => {
     setLoading(true);
     try {
-      const res = await fetch("/api/dashboard");
+      const res = await fetch(`/api/dashboard?limit=${limit}`);
       const json = await res.json();
       if (json.totalQuotes !== undefined) setData(json);
     } catch {
@@ -63,8 +74,8 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    fetchDashboard();
-  }, [fetchDashboard]);
+    fetchDashboard(recentLimit);
+  }, [fetchDashboard, recentLimit]);
 
   if (loading) {
     return (
@@ -176,8 +187,23 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Recent Quotes */}
             <div className="rounded-lg border">
-              <div className="p-4 border-b">
+              <div className="p-4 border-b flex items-center justify-between gap-2">
                 <h3 className="text-sm font-semibold">Recent Quotes</h3>
+                <Select
+                  value={String(recentLimit)}
+                  onValueChange={(v) => setRecentLimit(Number(v) as RecentLimit)}
+                >
+                  <SelectTrigger className="h-8 w-28 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RECENT_LIMITS.map((n) => (
+                      <SelectItem key={n} value={String(n)}>
+                        Last {n}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               {data.recentQuotes.length === 0 ? (
                 <div className="p-6 text-center text-sm text-muted-foreground">
