@@ -5,6 +5,10 @@ import { logAudit } from "@/lib/audit";
 
 const VALID_ROLES = ["admin", "manager", "sales_rep", "viewer"];
 const VALID_OFFICES = ["Harbor", "Marion"];
+const ALLOWED_DOMAIN = "bigbuildingsdirect.com";
+const MAX_FILE_BYTES = 1_000_000; // 1 MB
+const MAX_ROWS = 1000;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface CsvRow {
   name: string;
@@ -64,6 +68,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "File must be a .csv" }, { status: 400 });
   }
 
+  if (file.size > MAX_FILE_BYTES) {
+    return NextResponse.json(
+      { error: `File too large. Max ${MAX_FILE_BYTES / 1000} KB.` },
+      { status: 413 }
+    );
+  }
+
   const text = await file.text();
   let rows: CsvRow[];
 
@@ -78,6 +89,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "CSV has no valid rows" }, { status: 400 });
   }
 
+  if (rows.length > MAX_ROWS) {
+    return NextResponse.json(
+      { error: `Too many rows. Max ${MAX_ROWS} per import.` },
+      { status: 413 }
+    );
+  }
+
   const supabase = createAdminClient();
 
   // Fetch existing emails
@@ -90,6 +108,16 @@ export async function POST(req: NextRequest) {
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
+
+    if (!EMAIL_RE.test(row.email)) {
+      errors.push({ row: i + 2, email: row.email, reason: "Invalid email format" });
+      continue;
+    }
+
+    if (!row.email.endsWith(`@${ALLOWED_DOMAIN}`)) {
+      errors.push({ row: i + 2, email: row.email, reason: `Email must be @${ALLOWED_DOMAIN}` });
+      continue;
+    }
 
     if (existingEmails.has(row.email)) {
       skipped++;

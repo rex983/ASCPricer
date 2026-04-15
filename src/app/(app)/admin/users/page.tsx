@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import {
@@ -150,7 +150,6 @@ export default function UsersPage() {
   } | null>(null);
 
   const [form, setForm] = useState(emptyForm);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const set = (field: string, value: string) =>
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -666,7 +665,6 @@ export default function UsersPage() {
                   <p className="text-xs text-muted-foreground mt-1">.csv files only</p>
                 </div>
                 <input
-                  ref={fileInputRef}
                   type="file"
                   accept=".csv"
                   className="hidden"
