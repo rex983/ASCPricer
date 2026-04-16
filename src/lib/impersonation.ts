@@ -94,7 +94,7 @@ export async function getImpersonationContext(): Promise<ImpersonationContext | 
     isImpersonating: true,
     target: {
       profileId: target.id,
-      name: target.name,
+      name: target.full_name,
       email: target.email,
       office: targetOffice,
       role: targetRole,
