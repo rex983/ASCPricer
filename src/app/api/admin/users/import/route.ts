@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
     const office = row.office && VALID_OFFICES.includes(row.office) ? row.office : null;
 
     const { error } = await supabase.from("profiles").insert({
-      name: row.name,
+      full_name: row.name,
       email: row.email,
       role,
       office,

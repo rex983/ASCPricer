@@ -26,14 +26,16 @@ export async function GET() {
   // Get all profiles
   const { data: profiles, error } = await supabase
     .from("profiles")
-    .select("id, email, name, role, office, created_at")
+    .select("id, email, full_name, role, office, created_at")
     .order("created_at", { ascending: false });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const pending = (profiles ?? []).filter((p) => !linkedIds.has(p.id));
+  const pending = (profiles ?? [])
+    .filter((p) => !linkedIds.has(p.id))
+    .map((p) => ({ ...p, name: p.full_name }));
 
   return NextResponse.json(pending);
 }

@@ -27,7 +27,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     if (!body.name?.trim()) {
       return NextResponse.json({ error: "Name cannot be empty" }, { status: 400 });
     }
-    profileUpdates.name = body.name.trim();
+    profileUpdates.full_name = body.name.trim();
     repUpdates.name = body.name.trim();
   }
 
@@ -100,7 +100,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   // Prevent demoting the primary admin
   const { data: targetUser } = await supabase
     .from("profiles")
-    .select("email, name")
+    .select("email, full_name")
     .eq("id", id)
     .single();
 
@@ -157,7 +157,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       const currentProfile = profile || targetUser;
       await supabase.from("asc_sales_reps").insert({
         profile_id: id,
-        name: (repUpdates.name as string) || currentProfile?.name || "",
+        name: (repUpdates.name as string) || currentProfile?.full_name || "",
         email: (repUpdates.email as string) || currentProfile?.email || "",
         phone: repUpdates.phone ?? null,
         office: (repUpdates.office as string) || "Harbor",
@@ -184,7 +184,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     profile = data;
   }
 
-  return NextResponse.json(profile);
+  return NextResponse.json(profile ? { ...profile, name: profile.full_name } : profile);
 }
 
 /** DELETE /api/admin/users/[id] — delete profile + linked sales rep */
@@ -203,7 +203,7 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
 
   const { data: target } = await supabase
     .from("profiles")
-    .select("email, name")
+    .select("email, full_name")
     .eq("id", id)
     .single();
 
@@ -267,7 +267,7 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
     action: "delete_user",
     resourceType: "profile",
     resourceId: id,
-    details: { name: target.name, email: target.email },
+    details: { name: target.full_name, email: target.email },
   });
 
   return NextResponse.json({ success: true });

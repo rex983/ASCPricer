@@ -62,7 +62,7 @@ export async function getImpersonationContext(): Promise<ImpersonationContext | 
   const supabase = createAdminClient();
   const { data: target } = await supabase
     .from("profiles")
-    .select("id, name, email, role, office")
+    .select("id, full_name, email, role, office")
     .eq("id", targetId)
     .single();
 
@@ -85,7 +85,7 @@ export async function getImpersonationContext(): Promise<ImpersonationContext | 
     profileId: target.id,
     office: targetOffice ?? undefined,
     email: target.email,
-    name: target.name,
+    name: target.full_name,
   };
 
   return {

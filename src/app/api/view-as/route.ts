@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminClient();
   const { data: target } = await supabase
     .from("profiles")
-    .select("id, name, email, role, office")
+    .select("id, full_name, email, role, office")
     .eq("id", targetProfileId)
     .single();
 
@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
     ok: true,
     target: {
       profileId: target.id,
-      name: target.name,
+      name: target.full_name,
       email: target.email,
       office: target.office,
       role: target.role,

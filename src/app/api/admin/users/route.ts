@@ -107,6 +107,8 @@ export async function GET(req: NextRequest) {
     const rep = repsMap[p.id] ?? null;
     return {
       ...p,
+      // DB column is full_name; expose as `name` for the UI
+      name: p.full_name ?? null,
       // Sales rep fields (null if no linked rep)
       rep_id: rep?.id ?? null,
       phone: rep?.phone ?? null,
@@ -175,7 +177,7 @@ export async function POST(req: NextRequest) {
   const { data: profile, error } = await supabase
     .from("profiles")
     .insert({
-      name: name.trim(),
+      full_name: name.trim(),
       email: email.trim().toLowerCase(),
       role,
       office: office || null,
@@ -208,8 +210,8 @@ export async function POST(req: NextRequest) {
     action: "create_user",
     resourceType: "profile",
     resourceId: profile.id,
-    details: { name: profile.name, email: profile.email, role: profile.role, office: profile.office, employee_role },
+    details: { name: profile.full_name, email: profile.email, role: profile.role, office: profile.office, employee_role },
   });
 
-  return NextResponse.json(profile, { status: 201 });
+  return NextResponse.json({ ...profile, name: profile.full_name }, { status: 201 });
 }

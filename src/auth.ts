@@ -63,7 +63,7 @@ providers.push(
         const supabase = createAdminClient();
         const { data: profile } = await supabase
           .from("profiles")
-          .select("id, email, name, role")
+          .select("id, email, full_name, role")
           .eq("email", email)
           .single();
 
@@ -72,7 +72,7 @@ providers.push(
         return {
           id: profile.id,
           email: profile.email,
-          name: profile.name || null,
+          name: profile.full_name || null,
           image: null,
         };
       } catch {
@@ -108,7 +108,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (!existing) {
             await supabase.from("profiles").insert({
               email: user.email,
-              name: user.name || user.email.split("@")[0],
+              full_name: user.name || user.email.split("@")[0],
               role: "viewer",
             });
           }
