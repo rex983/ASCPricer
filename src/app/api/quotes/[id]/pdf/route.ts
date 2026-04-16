@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateQuotePdf } from "@/lib/pdf/generate";
+import { getEffectiveUser } from "@/lib/impersonation";
 import type { Quote } from "@/types/quote";
 
 export async function GET(
@@ -27,7 +28,8 @@ export async function GET(
   }
 
   // Access control: sales_rep/bst can only see own quotes, manager own office
-  const { role, profileId, office } = session.user;
+  const effective = await getEffectiveUser();
+  const { role, profileId, office } = effective ?? session.user;
   if (role === "sales_rep" || role === "bst") {
     if (quote.created_by !== profileId) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getEffectiveUser } from "@/lib/impersonation";
 
 export async function GET(
   _req: NextRequest,
@@ -11,7 +12,8 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { role, profileId, office } = session.user;
+  const effective = await getEffectiveUser();
+  const { role, profileId, office } = effective ?? session.user;
   const { id } = await params;
   const supabase = createAdminClient();
 
@@ -73,7 +75,8 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { role, profileId, office } = session.user;
+  const effective = await getEffectiveUser();
+  const { role, profileId, office } = effective ?? session.user;
   const { id } = await params;
   const supabase = createAdminClient();
 
@@ -127,7 +130,8 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { role, profileId, office } = session.user;
+  const effective = await getEffectiveUser();
+  const { role, profileId, office } = effective ?? session.user;
   const { id } = await params;
   const supabase = createAdminClient();
 

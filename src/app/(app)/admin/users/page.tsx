@@ -591,22 +591,20 @@ export default function UsersPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
-                            {canImpersonate &&
-                              !isSelf &&
-                              (user.role === "sales_rep" || user.role === "bst") && (
+                            {canImpersonate && !isSelf && user.role !== "admin" && (
                                 <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7"
-                                  title={`View as ${user.name || user.email}`}
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 gap-1 px-2 text-xs"
                                   disabled={viewingAs === user.id}
                                   onClick={() => handleViewAs(user)}
                                 >
                                   {viewingAs === user.id ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    <Loader2 className="h-3 w-3 animate-spin" />
                                   ) : (
-                                    <Eye className="h-3.5 w-3.5" />
+                                    <Eye className="h-3 w-3" />
                                   )}
+                                  View As
                                 </Button>
                               )}
                             <Button

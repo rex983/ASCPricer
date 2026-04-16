@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getEffectiveUser } from "@/lib/impersonation";
 
 export async function GET(
   _req: NextRequest,
@@ -29,7 +30,8 @@ export async function GET(
   }
 
   // Enforce access: sales_rep/bst can only see own quotes
-  const { role, profileId, office } = session.user;
+  const effective = await getEffectiveUser();
+  const { role, profileId, office } = effective ?? session.user;
   if (role === "sales_rep" || role === "bst") {
     if (data.created_by !== profileId) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -102,7 +104,8 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { role, profileId, office } = session.user;
+  const effective = await getEffectiveUser();
+  const { role, profileId, office } = effective ?? session.user;
   const { id } = await params;
   const supabase = createAdminClient();
 
