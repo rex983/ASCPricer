@@ -1,6 +1,6 @@
 import type { DefaultSession } from "next-auth";
 
-export type UserRole = "admin" | "manager" | "sales_rep" | "viewer";
+export type UserRole = "admin" | "manager" | "sales_rep" | "bst";
 export type Office = "Harbor" | "Marion";
 
 declare module "next-auth" {

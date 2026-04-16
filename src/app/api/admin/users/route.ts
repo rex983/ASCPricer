@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
 
 const ALLOWED_ROLES = ["admin", "manager"];
-const VALID_USER_ROLES = ["admin", "manager", "sales_rep", "viewer"];
+const VALID_USER_ROLES = ["admin", "manager", "sales_rep", "bst"];
 const VALID_OFFICES = ["Harbor", "Marion"];
 /** GET /api/admin/users — list all profiles with sales rep data + stats */
 export async function GET(req: NextRequest) {

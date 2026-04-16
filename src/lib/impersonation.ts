@@ -31,7 +31,7 @@ export interface ImpersonationContext {
 }
 
 // Only these roles can be impersonation targets — never admin/manager.
-const IMPERSONATABLE_ROLES: UserRole[] = ["sales_rep", "viewer"];
+const IMPERSONATABLE_ROLES: UserRole[] = ["sales_rep", "bst"];
 
 /**
  * Resolve the real session user and the effective user (after any valid

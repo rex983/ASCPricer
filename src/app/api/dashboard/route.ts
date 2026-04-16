@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     .from("asc_customers")
     .select("id, name, assigned_rep_id, created_at, created_by");
 
-  if (role === "sales_rep" || role === "viewer") {
+  if (role === "sales_rep" || role === "bst") {
     customerQuery = customerQuery.eq("created_by", profileId);
   } else if (role === "manager" && office) {
     customerQuery = customerQuery.eq("office", office);
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
     .from("asc_quotes")
     .select("id, quote_number, status, total, created_at, created_by, customer_id");
 
-  if (role === "sales_rep" || role === "viewer") {
+  if (role === "sales_rep" || role === "bst") {
     quoteQuery = quoteQuery.eq("created_by", profileId);
   } else if (role === "manager" && office) {
     quoteQuery = quoteQuery.eq("office", office);

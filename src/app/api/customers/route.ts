@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
     .limit(200);
 
   // Role-based filtering
-  if (role === "sales_rep" || role === "viewer") {
+  if (role === "sales_rep" || role === "bst") {
     query = query.eq("created_by", profileId);
   } else if (role === "manager" && office) {
     query = query.eq("office", office);

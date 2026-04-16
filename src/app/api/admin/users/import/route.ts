@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
 
-const VALID_ROLES = ["admin", "manager", "sales_rep", "viewer"];
+const VALID_ROLES = ["admin", "manager", "sales_rep", "bst"];
 const VALID_OFFICES = ["Harbor", "Marion"];
 const ALLOWED_DOMAIN = "bigbuildingsdirect.com";
 const MAX_FILE_BYTES = 1_000_000; // 1 MB
@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
       continue;
     }
 
-    const role = row.role && VALID_ROLES.includes(row.role) ? row.role : "viewer";
+    const role = row.role && VALID_ROLES.includes(row.role) ? row.role : "sales_rep";
     const office = row.office && VALID_OFFICES.includes(row.office) ? row.office : null;
 
     const { error } = await supabase.from("profiles").insert({

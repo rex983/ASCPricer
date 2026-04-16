@@ -109,7 +109,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             await supabase.from("profiles").insert({
               email: user.email,
               full_name: user.name || user.email.split("@")[0],
-              role: "viewer",
+              role: "sales_rep",
             });
           }
         } catch {
@@ -153,10 +153,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             if (profile.office) token.office = profile.office as Office;
           } else {
             // No profile found — default to most restrictive role
-            token.role = "viewer" as UserRole;
+            token.role = "sales_rep" as UserRole;
           }
         } catch {
-          token.role = "viewer" as UserRole;
+          token.role = "sales_rep" as UserRole;
         }
       }
       return token;

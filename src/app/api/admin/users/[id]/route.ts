@@ -6,7 +6,7 @@ import { logAudit } from "@/lib/audit";
 type Ctx = { params: Promise<{ id: string }> };
 
 const ALLOWED_ROLES = ["admin", "manager"];
-const VALID_USER_ROLES = ["admin", "manager", "sales_rep", "viewer"];
+const VALID_USER_ROLES = ["admin", "manager", "sales_rep", "bst"];
 const VALID_OFFICES = ["Harbor", "Marion"];
 
 /** PATCH /api/admin/users/[id] — update profile + linked sales rep */

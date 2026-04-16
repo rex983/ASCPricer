@@ -38,9 +38,9 @@ export async function GET(
     return NextResponse.json({ error: "Database operation failed" }, { status: 500 });
   }
 
-  // Access control: sales_rep/viewer can only see own customers, manager own office
+  // Access control: sales_rep/bst can only see own customers, manager own office
   const customer = customerResult.data;
-  if (role === "sales_rep" || role === "viewer") {
+  if (role === "sales_rep" || role === "bst") {
     if (customer.created_by !== profileId) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
@@ -88,8 +88,8 @@ export async function DELETE(
     return NextResponse.json({ error: "Customer not found" }, { status: 404 });
   }
 
-  // Access control: admin=all, manager=own office, sales_rep=own only
-  if (role === "sales_rep") {
+  // Access control: admin=all, manager=own office, sales_rep/bst=own only
+  if (role === "sales_rep" || role === "bst") {
     if (customer.created_by !== profileId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -97,8 +97,6 @@ export async function DELETE(
     if (customer.office && customer.office !== office) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-  } else if (role === "viewer") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   // Nullify customer_id on any linked quotes (don't cascade-delete quotes)
@@ -144,10 +142,8 @@ export async function PATCH(
     return NextResponse.json({ error: "Customer not found" }, { status: 404 });
   }
 
-  // Access control: admin=all, manager=own office, sales_rep=own only, viewer=none
-  if (role === "viewer") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  } else if (role === "sales_rep") {
+  // Access control: admin=all, manager=own office, sales_rep/bst=own only
+  if (role === "sales_rep" || role === "bst") {
     if (existing.created_by !== profileId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

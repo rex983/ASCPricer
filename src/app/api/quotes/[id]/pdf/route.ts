@@ -26,9 +26,9 @@ export async function GET(
     return NextResponse.json({ error: "Quote not found" }, { status: 404 });
   }
 
-  // Access control: sales_rep/viewer can only see own quotes, manager own office
+  // Access control: sales_rep/bst can only see own quotes, manager own office
   const { role, profileId, office } = session.user;
-  if (role === "sales_rep" || role === "viewer") {
+  if (role === "sales_rep" || role === "bst") {
     if (quote.created_by !== profileId) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }

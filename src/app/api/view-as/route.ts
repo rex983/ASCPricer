@@ -10,7 +10,7 @@ import {
 } from "@/lib/impersonation";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const IMPERSONATABLE_ROLES = ["sales_rep", "viewer"];
+const IMPERSONATABLE_ROLES = ["sales_rep", "bst"];
 
 /** GET /api/view-as — current impersonation status for the UI banner. */
 export async function GET() {

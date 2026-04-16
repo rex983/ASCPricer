@@ -28,9 +28,9 @@ export async function GET(
     return NextResponse.json({ error: "Database operation failed" }, { status: 500 });
   }
 
-  // Enforce access: sales_rep/viewer can only see own quotes
+  // Enforce access: sales_rep/bst can only see own quotes
   const { role, profileId, office } = session.user;
-  if (role === "sales_rep" || role === "viewer") {
+  if (role === "sales_rep" || role === "bst") {
     if (data.created_by !== profileId) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
@@ -117,10 +117,8 @@ export async function PATCH(
     return NextResponse.json({ error: "Quote not found" }, { status: 404 });
   }
 
-  // Access control: admin=all, manager=own office, sales_rep=own only, viewer=none
-  if (role === "viewer") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  } else if (role === "sales_rep") {
+  // Access control: admin=all, manager=own office, sales_rep/bst=own only
+  if (role === "sales_rep" || role === "bst") {
     if (existing.created_by !== profileId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

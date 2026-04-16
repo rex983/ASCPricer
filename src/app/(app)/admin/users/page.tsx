@@ -71,21 +71,21 @@ const ROLE_LABELS: Record<UserRole, string> = {
   admin: "Admin",
   manager: "Manager",
   sales_rep: "Sales Rep",
-  viewer: "Viewer",
+  bst: "BST",
 };
 
 const ROLE_COLORS: Record<UserRole, "default" | "secondary" | "destructive" | "outline"> = {
   admin: "destructive",
   manager: "default",
   sales_rep: "secondary",
-  viewer: "outline",
+  bst: "outline",
 };
 
 const ROLE_ICONS: Record<UserRole, typeof Shield> = {
   admin: ShieldAlert,
   manager: ShieldCheck,
   sales_rep: Shield,
-  viewer: Shield,
+  bst: Shield,
 };
 
 const ROLE_FILTERS = [
@@ -93,7 +93,7 @@ const ROLE_FILTERS = [
   { value: "admin", label: "Admins" },
   { value: "manager", label: "Managers" },
   { value: "sales_rep", label: "Sales Reps" },
-  { value: "viewer", label: "Viewers" },
+  { value: "bst", label: "BST" },
 ] as const;
 
 const OFFICE_FILTERS = [
@@ -106,7 +106,7 @@ const OFFICE_FILTERS = [
 const emptyForm = {
   name: "",
   email: "",
-  role: "viewer" as string,
+  role: "sales_rep" as string,
   office: "" as string,
   phone: "",
 };
@@ -223,7 +223,7 @@ export default function UsersPage() {
   };
 
   const downloadTemplate = () => {
-    const csv = "name,email,role,office\nJohn Doe,john@bigbuildingsdirect.com,viewer,Harbor\n";
+    const csv = "name,email,role,office\nJohn Doe,john@bigbuildingsdirect.com,sales_rep,Harbor\n";
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -593,7 +593,7 @@ export default function UsersPage() {
                           <div className="flex gap-1">
                             {canImpersonate &&
                               !isSelf &&
-                              (user.role === "sales_rep" || user.role === "viewer") && (
+                              (user.role === "sales_rep" || user.role === "bst") && (
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -648,7 +648,7 @@ export default function UsersPage() {
           <DialogHeader>
             <DialogTitle>Import Users from CSV</DialogTitle>
             <DialogDescription>
-              Upload a CSV file with columns: <strong>name</strong>, <strong>email</strong> (required), and optionally <strong>role</strong> (admin, manager, sales_rep, viewer) and <strong>office</strong> (Harbor, Marion). Existing emails will be skipped.
+              Upload a CSV file with columns: <strong>name</strong>, <strong>email</strong> (required), and optionally <strong>role</strong> (admin, manager, sales_rep, bst) and <strong>office</strong> (Harbor, Marion). Existing emails will be skipped.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -734,7 +734,7 @@ export default function UsersPage() {
                       <SelectItem value="admin">Admin</SelectItem>
                       <SelectItem value="manager">Manager</SelectItem>
                       <SelectItem value="sales_rep">Sales Rep</SelectItem>
-                      <SelectItem value="viewer">Viewer</SelectItem>
+                      <SelectItem value="bst">BST</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
