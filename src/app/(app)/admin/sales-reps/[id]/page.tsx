@@ -35,20 +35,6 @@ import {
 } from "@/components/ui/select";
 import { formatCurrency, formatDate, STATUS_COLORS } from "@/lib/utils";
 
-type EmployeeRole = "sales_rep" | "sales_manager" | "bst";
-
-const ROLE_LABELS: Record<EmployeeRole, string> = {
-  sales_rep: "Sales Rep",
-  sales_manager: "Sales Manager",
-  bst: "BST",
-};
-
-const ROLE_COLORS: Record<EmployeeRole, "default" | "secondary" | "destructive"> = {
-  sales_rep: "default",
-  sales_manager: "secondary",
-  bst: "secondary",
-};
-
 interface RepDetail {
   rep: {
     id: string;
@@ -56,9 +42,6 @@ interface RepDetail {
     email: string;
     phone: string | null;
     office: string;
-    territory: string | null;
-    commission_rate: number;
-    employee_role: EmployeeRole;
     is_active: boolean;
     profile_id: string | null;
     created_at: string;
@@ -203,9 +186,6 @@ export default function TeamMemberDetailPage() {
               <div className="space-y-1">
                 <div className="flex items-center gap-3">
                   <h2 className="text-2xl font-bold">{rep.name}</h2>
-                  <Badge variant={ROLE_COLORS[rep.employee_role]}>
-                    {ROLE_LABELS[rep.employee_role] || rep.employee_role}
-                  </Badge>
                   <Badge variant={rep.is_active ? "default" : "destructive"}>
                     {rep.is_active ? "Active" : "Inactive"}
                   </Badge>
@@ -224,12 +204,10 @@ export default function TeamMemberDetailPage() {
                   <span className="flex items-center gap-1">
                     <MapPin className="h-3.5 w-3.5" />
                     {rep.office}
-                    {rep.territory ? ` — ${rep.territory}` : ""}
                   </span>
                 </div>
               </div>
               <div className="text-right text-sm text-muted-foreground">
-                <p>Commission: <span className="font-medium text-foreground">{rep.commission_rate}%</span></p>
                 <p>Member since {formatDate(rep.created_at)}</p>
               </div>
             </div>

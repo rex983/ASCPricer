@@ -44,8 +44,6 @@ import {
 } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/utils";
 
-type EmployeeRole = "sales_rep" | "sales_manager" | "bst";
-
 interface SalesRep {
   id: string;
   profile_id: string | null;
@@ -53,9 +51,6 @@ interface SalesRep {
   email: string;
   phone: string | null;
   office: string;
-  territory: string | null;
-  commission_rate: number;
-  employee_role: EmployeeRole;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -63,25 +58,6 @@ interface SalesRep {
   quote_count: number;
   quote_total: number;
 }
-
-const ROLE_LABELS: Record<EmployeeRole, string> = {
-  sales_rep: "Sales Rep",
-  sales_manager: "Sales Manager",
-  bst: "BST",
-};
-
-const ROLE_COLORS: Record<EmployeeRole, "default" | "secondary" | "destructive"> = {
-  sales_rep: "default",
-  sales_manager: "secondary",
-  bst: "secondary",
-};
-
-const ROLE_FILTERS = [
-  { value: "all", label: "All Roles" },
-  { value: "sales_rep", label: "Sales Reps" },
-  { value: "sales_manager", label: "Sales Managers" },
-  { value: "bst", label: "BST" },
-] as const;
 
 interface PendingProfile {
   id: string;
@@ -97,10 +73,7 @@ const emptyForm = {
   email: "",
   phone: "",
   office: "Harbor" as string,
-  territory: "",
-  commission_rate: "0",
   profile_id: "",
-  employee_role: "sales_rep" as string,
 };
 
 export default function TeamPage() {
@@ -115,7 +88,6 @@ export default function TeamPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("all");
 
   const [form, setForm] = useState(emptyForm);
 
@@ -178,10 +150,7 @@ export default function TeamPage() {
       email: profile.email,
       phone: "",
       office: profile.office || "Harbor",
-      territory: "",
-      commission_rate: "0",
       profile_id: profile.id,
-      employee_role: "sales_rep",
     });
     setError(null);
     setDialogOpen(true);
@@ -194,10 +163,7 @@ export default function TeamPage() {
       email: rep.email,
       phone: rep.phone || "",
       office: rep.office,
-      territory: rep.territory || "",
-      commission_rate: String(rep.commission_rate),
       profile_id: rep.profile_id || "",
-      employee_role: rep.employee_role || "sales_rep",
     });
     setError(null);
     setDialogOpen(true);
@@ -227,10 +193,7 @@ export default function TeamPage() {
         email: form.email.trim(),
         phone: form.phone || null,
         office: form.office,
-        territory: form.territory || null,
-        commission_rate: parseFloat(form.commission_rate) || 0,
         profile_id: form.profile_id || null,
-        employee_role: form.employee_role,
       };
 
       const res = await fetch(url, {
@@ -274,13 +237,11 @@ export default function TeamPage() {
   };
 
   const filtered = reps.filter((r) => {
-    if (roleFilter !== "all" && r.employee_role !== roleFilter) return false;
     if (!search) return true;
     const s = search.toLowerCase();
     return (
       r.name.toLowerCase().includes(s) ||
       r.email.toLowerCase().includes(s) ||
-      (r.territory || "").toLowerCase().includes(s) ||
       r.office.toLowerCase().includes(s)
     );
   });
@@ -304,18 +265,6 @@ export default function TeamPage() {
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
-              <Select value={roleFilter} onValueChange={setRoleFilter}>
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ROLE_FILTERS.map((rf) => (
-                    <SelectItem key={rf.value} value={rf.value}>
-                      {rf.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
               <Badge variant="secondary">
                 {activeCount} active / {reps.length} total
               </Badge>
@@ -398,7 +347,7 @@ export default function TeamPage() {
           ) : filtered.length === 0 ? (
             <div className="rounded-lg border border-dashed p-12 text-center text-muted-foreground">
               <UsersRound className="mx-auto h-10 w-10 mb-2" />
-              <p>{search || roleFilter !== "all" ? "No matching team members." : "No team members yet."}</p>
+              <p>{search ? "No matching team members." : "No team members yet."}</p>
             </div>
           ) : (
             <div className="rounded-lg border">
@@ -407,11 +356,8 @@ export default function TeamPage() {
                   <TableRow>
                     <TableHead className="w-12">Active</TableHead>
                     <TableHead>Name</TableHead>
-                    <TableHead>Role</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Office</TableHead>
-                    <TableHead>Territory</TableHead>
-                    <TableHead className="text-right">Commission</TableHead>
                     <TableHead className="text-right">Customers</TableHead>
                     <TableHead className="text-right">Quotes</TableHead>
                     <TableHead className="text-right">Total Sales</TableHead>
@@ -443,18 +389,9 @@ export default function TeamPage() {
                           {rep.name}
                         </Link>
                       </TableCell>
-                      <TableCell>
-                        <Badge variant={ROLE_COLORS[rep.employee_role]}>
-                          {ROLE_LABELS[rep.employee_role] || rep.employee_role}
-                        </Badge>
-                      </TableCell>
                       <TableCell>{rep.email}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{rep.office}</Badge>
-                      </TableCell>
-                      <TableCell>{rep.territory || "---"}</TableCell>
-                      <TableCell className="text-right">
-                        {rep.commission_rate}%
                       </TableCell>
                       <TableCell className="text-right">
                         {rep.customer_count}
@@ -530,22 +467,6 @@ export default function TeamPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label>Role *</Label>
-                <Select
-                  value={form.employee_role}
-                  onValueChange={(v) => set("employee_role", v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="sales_rep">Sales Rep</SelectItem>
-                    <SelectItem value="sales_manager">Sales Manager</SelectItem>
-                    <SelectItem value="bst">BST (Customer Service)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
                 <Label>Phone</Label>
                 <Input
                   value={form.phone}
@@ -566,25 +487,6 @@ export default function TeamPage() {
                     <SelectItem value="Marion">Marion</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-1">
-                <Label>Territory</Label>
-                <Input
-                  placeholder="e.g. Ohio / Southeast"
-                  value={form.territory}
-                  onChange={(e) => set("territory", e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>Commission Rate (%)</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.5"
-                  value={form.commission_rate}
-                  onChange={(e) => set("commission_rate", e.target.value)}
-                />
               </div>
               <div className="space-y-1">
                 <Label>Profile ID (optional)</Label>

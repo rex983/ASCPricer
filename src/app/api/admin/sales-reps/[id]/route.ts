@@ -37,15 +37,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     }
     updates.office = body.office;
   }
-  if (body.territory !== undefined) updates.territory = body.territory || null;
-  if (body.commission_rate !== undefined) updates.commission_rate = body.commission_rate;
   if (body.is_active !== undefined) updates.is_active = Boolean(body.is_active);
-  if (body.employee_role !== undefined) {
-    const VALID_ROLES = ["sales_rep", "sales_manager", "bst"];
-    if (VALID_ROLES.includes(body.employee_role)) {
-      updates.employee_role = body.employee_role;
-    }
-  }
   if (body.profile_id !== undefined) {
     const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     updates.profile_id = body.profile_id && UUID_RE.test(body.profile_id) ? body.profile_id : null;

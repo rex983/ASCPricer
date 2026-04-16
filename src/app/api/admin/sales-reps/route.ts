@@ -68,15 +68,12 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { name, email, phone, office, territory, commission_rate, profile_id, employee_role } = body as {
+  const { name, email, phone, office, profile_id } = body as {
     name: string;
     email: string;
     phone?: string;
     office: string;
-    territory?: string;
-    commission_rate?: number;
     profile_id?: string;
-    employee_role?: string;
   };
 
   if (!name?.trim()) {
@@ -91,17 +88,12 @@ export async function POST(req: NextRequest) {
 
   const supabase = createAdminClient();
 
-  const VALID_ROLES = ["sales_rep", "sales_manager", "bst"];
-
   const insertData: Record<string, unknown> = {
     name: name.trim(),
     email: email.trim(),
     phone: phone || null,
     office,
-    territory: territory || null,
-    commission_rate: commission_rate ?? 0,
     is_active: true,
-    employee_role: employee_role && VALID_ROLES.includes(employee_role) ? employee_role : "sales_rep",
   };
 
   if (profile_id) {

@@ -6,8 +6,6 @@ import { logAudit } from "@/lib/audit";
 const ALLOWED_ROLES = ["admin", "manager"];
 const VALID_USER_ROLES = ["admin", "manager", "sales_rep", "viewer"];
 const VALID_OFFICES = ["Harbor", "Marion"];
-const VALID_EMPLOYEE_ROLES = ["sales_rep", "sales_manager", "bst"];
-
 /** GET /api/admin/users — list all profiles with sales rep data + stats */
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -44,16 +42,13 @@ export async function GET(req: NextRequest) {
   let repsMap: Record<string, {
     id: string;
     phone: string | null;
-    territory: string | null;
-    commission_rate: number;
-    employee_role: string;
     is_active: boolean;
   }> = {};
 
   if (profileIds.length > 0) {
     const { data: reps } = await supabase
       .from("asc_sales_reps")
-      .select("id, profile_id, phone, territory, commission_rate, employee_role, is_active")
+      .select("id, profile_id, phone, is_active")
       .in("profile_id", profileIds);
 
     for (const r of reps ?? []) {
@@ -61,9 +56,6 @@ export async function GET(req: NextRequest) {
         repsMap[r.profile_id] = {
           id: r.id,
           phone: r.phone,
-          territory: r.territory,
-          commission_rate: r.commission_rate,
-          employee_role: r.employee_role,
           is_active: r.is_active,
         };
       }
@@ -112,9 +104,6 @@ export async function GET(req: NextRequest) {
       // Sales rep fields (null if no linked rep)
       rep_id: rep?.id ?? null,
       phone: rep?.phone ?? null,
-      territory: rep?.territory ?? null,
-      commission_rate: rep?.commission_rate ?? null,
-      employee_role: rep?.employee_role ?? null,
       is_active: rep?.is_active ?? null,
       // Stats
       customer_count: rep ? (customerCountMap[rep.id] || 0) : 0,
@@ -134,15 +123,12 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { name, email, role, office, phone, territory, commission_rate, employee_role } = body as {
+  const { name, email, role, office, phone } = body as {
     name: string;
     email: string;
     role: string;
     office?: string;
     phone?: string;
-    territory?: string;
-    commission_rate?: number;
-    employee_role?: string;
   };
 
   if (!name?.trim()) {
@@ -189,28 +175,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // If employee_role is provided, create a linked sales rep
-  if (employee_role && VALID_EMPLOYEE_ROLES.includes(employee_role)) {
-    await supabase.from("asc_sales_reps").insert({
-      profile_id: profile.id,
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
-      phone: phone || null,
-      office: office || "Harbor",
-      territory: territory || null,
-      commission_rate: commission_rate ?? 0,
-      employee_role,
-      is_active: true,
-    });
-  }
-
   await logAudit({
     userId: session.user.profileId,
     userEmail: session.user.email,
     action: "create_user",
     resourceType: "profile",
     resourceId: profile.id,
-    details: { name: profile.full_name, email: profile.email, role: profile.role, office: profile.office, employee_role },
+    details: { name: profile.full_name, email: profile.email, role: profile.role, office: profile.office },
   });
 
   return NextResponse.json({ ...profile, name: profile.full_name }, { status: 201 });

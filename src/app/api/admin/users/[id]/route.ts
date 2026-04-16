@@ -8,7 +8,6 @@ type Ctx = { params: Promise<{ id: string }> };
 const ALLOWED_ROLES = ["admin", "manager"];
 const VALID_USER_ROLES = ["admin", "manager", "sales_rep", "viewer"];
 const VALID_OFFICES = ["Harbor", "Marion"];
-const VALID_EMPLOYEE_ROLES = ["sales_rep", "sales_manager", "bst"];
 
 /** PATCH /api/admin/users/[id] — update profile + linked sales rep */
 export async function PATCH(req: NextRequest, ctx: Ctx) {
@@ -62,18 +61,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
   // Sales rep fields
   if (body.phone !== undefined) repUpdates.phone = body.phone || null;
-  if (body.territory !== undefined) repUpdates.territory = body.territory || null;
-  if (body.commission_rate !== undefined) repUpdates.commission_rate = body.commission_rate;
   if (body.is_active !== undefined) repUpdates.is_active = Boolean(body.is_active);
-  if (body.employee_role !== undefined) {
-    if (body.employee_role && !VALID_EMPLOYEE_ROLES.includes(body.employee_role)) {
-      return NextResponse.json(
-        { error: `Employee role must be one of: ${VALID_EMPLOYEE_ROLES.join(", ")}` },
-        { status: 400 }
-      );
-    }
-    repUpdates.employee_role = body.employee_role;
-  }
 
   const hasProfileUpdates = Object.keys(profileUpdates).length > 0;
   const hasRepUpdates = Object.keys(repUpdates).length > 0;
@@ -152,20 +140,6 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
         .from("asc_sales_reps")
         .update(repUpdates)
         .eq("profile_id", id);
-    } else if (body.employee_role && VALID_EMPLOYEE_ROLES.includes(body.employee_role)) {
-      // Create new rep — need full required fields
-      const currentProfile = profile || targetUser;
-      await supabase.from("asc_sales_reps").insert({
-        profile_id: id,
-        name: (repUpdates.name as string) || currentProfile?.full_name || "",
-        email: (repUpdates.email as string) || currentProfile?.email || "",
-        phone: repUpdates.phone ?? null,
-        office: (repUpdates.office as string) || "Harbor",
-        territory: repUpdates.territory ?? null,
-        commission_rate: (repUpdates.commission_rate as number) ?? 0,
-        employee_role: body.employee_role,
-        is_active: true,
-      });
     }
   }
 

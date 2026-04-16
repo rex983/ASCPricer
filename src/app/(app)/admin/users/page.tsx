@@ -50,8 +50,6 @@ import {
 import { formatCurrency } from "@/lib/utils";
 import type { UserRole, Office } from "@/types/auth";
 
-type EmployeeRole = "sales_rep" | "sales_manager" | "bst";
-
 interface UserProfile {
   id: string;
   email: string;
@@ -62,9 +60,6 @@ interface UserProfile {
   // Sales rep data (null if no linked rep)
   rep_id: string | null;
   phone: string | null;
-  territory: string | null;
-  commission_rate: number | null;
-  employee_role: EmployeeRole | null;
   is_active: boolean | null;
   // Stats
   customer_count: number;
@@ -93,12 +88,6 @@ const ROLE_ICONS: Record<UserRole, typeof Shield> = {
   viewer: Shield,
 };
 
-const EMPLOYEE_ROLE_LABELS: Record<string, string> = {
-  sales_rep: "Sales Rep",
-  sales_manager: "Sales Manager",
-  bst: "BST",
-};
-
 const ROLE_FILTERS = [
   { value: "all", label: "All Roles" },
   { value: "admin", label: "Admins" },
@@ -120,9 +109,6 @@ const emptyForm = {
   role: "viewer" as string,
   office: "" as string,
   phone: "",
-  employee_role: "" as string,
-  territory: "",
-  commission_rate: "0",
 };
 
 export default function UsersPage() {
@@ -249,17 +235,14 @@ export default function UsersPage() {
 
   const downloadCsv = () => {
     const escape = (v: string) => (v.includes(",") || v.includes('"') ? `"${v.replace(/"/g, '""')}"` : v);
-    const header = "name,email,role,office,position,phone,territory,commission_rate,active,customers,quotes,total_sales";
+    const header = "name,email,role,office,phone,active,customers,quotes,total_sales";
     const rows = filtered.map((u) =>
       [
         escape(u.name || ""),
         escape(u.email),
         u.role,
         u.office || "",
-        u.employee_role ? (EMPLOYEE_ROLE_LABELS[u.employee_role] || u.employee_role) : "",
         u.phone || "",
-        escape(u.territory || ""),
-        u.commission_rate !== null ? String(u.commission_rate) : "",
         u.is_active !== null ? (u.is_active ? "yes" : "no") : "",
         String(u.customer_count),
         String(u.quote_count),
@@ -291,9 +274,6 @@ export default function UsersPage() {
       role: user.role,
       office: user.office || "",
       phone: user.phone || "",
-      employee_role: user.employee_role || "",
-      territory: user.territory || "",
-      commission_rate: String(user.commission_rate ?? 0),
     });
     setError(null);
     setDialogOpen(true);
@@ -323,9 +303,6 @@ export default function UsersPage() {
         email: form.email.trim(),
         office: form.office || null,
         phone: form.phone || null,
-        territory: form.territory || null,
-        commission_rate: parseFloat(form.commission_rate) || 0,
-        employee_role: form.employee_role || null,
       };
 
       if (isAdmin) {
@@ -382,8 +359,7 @@ export default function UsersPage() {
     const s = search.toLowerCase();
     return (
       (u.name || "").toLowerCase().includes(s) ||
-      u.email.toLowerCase().includes(s) ||
-      (u.territory || "").toLowerCase().includes(s)
+      u.email.toLowerCase().includes(s)
     );
   });
 
@@ -537,10 +513,7 @@ export default function UsersPage() {
                     <TableHead className="w-12">Active</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Role</TableHead>
-                    <TableHead>Position</TableHead>
                     <TableHead>Office</TableHead>
-                    <TableHead>Territory</TableHead>
-                    <TableHead className="text-right">Commission</TableHead>
                     <TableHead className="text-right">Customers</TableHead>
                     <TableHead className="text-right">Quotes</TableHead>
                     <TableHead className="text-right">Total Sales</TableHead>
@@ -601,26 +574,11 @@ export default function UsersPage() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {user.employee_role ? (
-                            <Badge variant="secondary" className="text-xs">
-                              {EMPLOYEE_ROLE_LABELS[user.employee_role] || user.employee_role}
-                            </Badge>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">---</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
                           {user.office ? (
                             <Badge variant="outline">{user.office}</Badge>
                           ) : (
                             <span className="text-muted-foreground text-xs">---</span>
                           )}
-                        </TableCell>
-                        <TableCell>
-                          {user.territory || <span className="text-muted-foreground text-xs">---</span>}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {user.commission_rate !== null ? `${user.commission_rate}%` : <span className="text-muted-foreground text-xs">---</span>}
                         </TableCell>
                         <TableCell className="text-right">
                           {user.customer_count || <span className="text-muted-foreground text-xs">0</span>}
@@ -739,8 +697,8 @@ export default function UsersPage() {
             </DialogTitle>
             <DialogDescription>
               {editingUser
-                ? "Update this user's profile and team settings."
-                : "Create a new user. Set a position to add them to the sales team."}
+                ? "Update this user's profile."
+                : "Create a new user."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
@@ -799,54 +757,15 @@ export default function UsersPage() {
               </div>
             </div>
 
-            {/* Sales Team Section */}
-            <div className="border-t pt-3 mt-3">
-              <p className="text-sm font-medium mb-2">Sales Team</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label>Position</Label>
-                  <Select
-                    value={form.employee_role || "none"}
-                    onValueChange={(v) => set("employee_role", v === "none" ? "" : v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Not on sales team</SelectItem>
-                      <SelectItem value="sales_rep">Sales Rep</SelectItem>
-                      <SelectItem value="sales_manager">Sales Manager</SelectItem>
-                      <SelectItem value="bst">BST (Customer Service)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label>Phone</Label>
-                  <Input
-                    value={form.phone}
-                    onChange={(e) => set("phone", e.target.value)}
-                    placeholder="(555) 123-4567"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>Territory</Label>
-                  <Input
-                    placeholder="e.g. Ohio / Southeast"
-                    value={form.territory}
-                    onChange={(e) => set("territory", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>Commission Rate (%)</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.5"
-                    value={form.commission_rate}
-                    onChange={(e) => set("commission_rate", e.target.value)}
-                  />
-                </div>
+            {/* Phone */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Phone</Label>
+                <Input
+                  value={form.phone}
+                  onChange={(e) => set("phone", e.target.value)}
+                  placeholder="(555) 123-4567"
+                />
               </div>
             </div>
 
