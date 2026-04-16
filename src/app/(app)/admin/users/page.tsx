@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Plus,
@@ -112,10 +113,22 @@ const emptyForm = {
 };
 
 export default function UsersPage() {
-  const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "admin";
-  const canImpersonate =
-    session?.user?.role === "admin" || session?.user?.role === "manager";
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const role = session?.user?.role;
+  const isAdmin = role === "admin";
+  const isAdminOrManager = role === "admin" || role === "manager";
+  const canImpersonate = isAdminOrManager;
+
+  useEffect(() => {
+    if (status === "authenticated" && !isAdminOrManager) {
+      router.replace("/dashboard");
+    }
+  }, [status, isAdminOrManager, router]);
+
+  if (status === "loading" || (status === "authenticated" && !isAdminOrManager)) {
+    return null;
+  }
 
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);

@@ -38,7 +38,7 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const role = session?.user?.role;
-  const showAdmin = role === "admin";
+  const showAdmin = role === "admin" || role === "manager";
 
   return (
     <Sidebar>
