@@ -3,12 +3,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { AppHeader } from "@/components/layout/app-header";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Quote } from "@/types/quote";
@@ -32,7 +30,6 @@ export default function QuoteDetailPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editFields, setEditFields] = useState({
-    status: "",
     customer_name: "",
     customer_email: "",
     customer_phone: "",
@@ -50,7 +47,6 @@ export default function QuoteDetailPage() {
         if (data.id) {
           setQuote(data);
           setEditFields({
-            status: data.status,
             customer_name: data.customer_name || "",
             customer_email: data.customer_email || "",
             customer_phone: data.customer_phone || "",
@@ -121,7 +117,6 @@ export default function QuoteDetailPage() {
               <ArrowLeft className="mr-1 h-4 w-4" /> Back
             </Button>
             <h2 className="text-xl font-semibold">{quote.quote_number}</h2>
-            <Badge>{quote.status}</Badge>
             <div className="ml-auto flex items-center gap-3">
               <span className="text-sm text-muted-foreground">
                 Created {formatDate(quote.created_at)}
@@ -210,29 +205,10 @@ export default function QuoteDetailPage() {
               {/* Status + Save */}
               <Card>
                 <CardContent className="pt-6">
-                  <div className="flex items-end gap-4">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Status</Label>
-                      <Select
-                        value={editFields.status}
-                        onValueChange={(v) => setEditFields((f) => ({ ...f, status: v }))}
-                      >
-                        <SelectTrigger className="w-36">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="draft">Draft</SelectItem>
-                          <SelectItem value="sent">Sent</SelectItem>
-                          <SelectItem value="accepted">Accepted</SelectItem>
-                          <SelectItem value="expired">Expired</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <Button onClick={handleSave} disabled={saving}>
-                      {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Save className="mr-1 h-4 w-4" />}
-                      Save Changes
-                    </Button>
-                  </div>
+                  <Button onClick={handleSave} disabled={saving}>
+                    {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Save className="mr-1 h-4 w-4" />}
+                    Save Changes
+                  </Button>
                 </CardContent>
               </Card>
 

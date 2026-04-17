@@ -7,15 +7,13 @@ import { AppHeader } from "@/components/layout/app-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatCurrency, formatDate, STATUS_COLORS } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import { FileText, Search, Trash2 } from "lucide-react";
 
 interface QuoteSummary {
   id: string;
   quote_number: string;
-  status: string;
   customer_name: string | null;
   customer_state: string | null;
   subtotal: number;
@@ -28,7 +26,6 @@ export default function QuotesPage() {
   const { data: session } = useSession();
   const [quotes, setQuotes] = useState<QuoteSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
 
   const role = session?.user?.role;
@@ -38,7 +35,6 @@ export default function QuotesPage() {
   const fetchQuotes = useCallback(() => {
     setLoading(true);
     const params = new URLSearchParams();
-    if (statusFilter !== "all") params.set("status", statusFilter);
     if (search) params.set("search", search);
 
     fetch(`/api/quotes?${params}`)
@@ -48,7 +44,7 @@ export default function QuotesPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [statusFilter, search]);
+  }, [search]);
 
   useEffect(() => {
     fetchQuotes();
@@ -85,18 +81,6 @@ export default function QuotesPage() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-36">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="sent">Sent</SelectItem>
-                <SelectItem value="accepted">Accepted</SelectItem>
-                <SelectItem value="expired">Expired</SelectItem>
-              </SelectContent>
-            </Select>
             <Button asChild>
               <Link href="/calculator">New Quote</Link>
             </Button>
@@ -119,7 +103,6 @@ export default function QuotesPage() {
                     <TableHead>Customer</TableHead>
                     <TableHead>State</TableHead>
                     {showOffice && <TableHead>Office</TableHead>}
-                    <TableHead>Status</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead>Date</TableHead>
                     {canDelete && <TableHead className="w-10" />}
@@ -147,11 +130,6 @@ export default function QuotesPage() {
                           )}
                         </TableCell>
                       )}
-                      <TableCell>
-                        <Badge variant={STATUS_COLORS[q.status]}>
-                          {q.status}
-                        </Badge>
-                      </TableCell>
                       <TableCell className="text-right font-medium">
                         {formatCurrency(q.total)}
                       </TableCell>
