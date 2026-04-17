@@ -120,16 +120,6 @@ export default function UsersPage() {
   const isAdminOrManager = role === "admin" || role === "manager";
   const canImpersonate = isAdminOrManager;
 
-  useEffect(() => {
-    if (status === "authenticated" && !isAdminOrManager) {
-      router.replace("/dashboard");
-    }
-  }, [status, isAdminOrManager, router]);
-
-  if (status === "loading" || (status === "authenticated" && !isAdminOrManager)) {
-    return null;
-  }
-
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -153,6 +143,16 @@ export default function UsersPage() {
   } | null>(null);
 
   const [form, setForm] = useState(emptyForm);
+
+  useEffect(() => {
+    if (status === "authenticated" && !isAdminOrManager) {
+      router.replace("/dashboard");
+    }
+  }, [status, isAdminOrManager, router]);
+
+  if (status === "loading" || (status === "authenticated" && !isAdminOrManager)) {
+    return null;
+  }
 
   const set = (field: string, value: string) =>
     setForm((prev) => ({ ...prev, [field]: value }));
