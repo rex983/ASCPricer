@@ -51,6 +51,8 @@ interface CalculatorFormProps {
   initialConfig?: BuildingConfig;
   initialCustomer?: InitialCustomer;
   initialNotes?: string;
+  editingCustomerId?: string;
+  editingCustomerName?: string;
 }
 
 type VLItem = { value: string; label: string };
@@ -220,7 +222,8 @@ function getAccessoryOptions(matrices: PricingMatrices | null) {
   return { doors, windows, rollUpEnds, rollUpSides };
 }
 
-export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStates = [], appConfig, initialConfig, initialCustomer, initialNotes }: CalculatorFormProps) {
+export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStates = [], appConfig, initialConfig, initialCustomer, initialNotes, editingCustomerId, editingCustomerName }: CalculatorFormProps) {
+  const isEditing = !!editingCustomerId;
   const isWidespan = spreadsheetType === "widespan";
   const router = useRouter();
   const [config, setConfig] = useState<BuildingConfig>(() => initialConfig ?? getDefaultConfig(spreadsheetType));
@@ -340,7 +343,9 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
         office: session?.user?.office || undefined,
       };
 
-      if (customerMode === "existing" && selectedCustomer) {
+      if (isEditing && editingCustomerId) {
+        payload.customerId = editingCustomerId;
+      } else if (customerMode === "existing" && selectedCustomer) {
         payload.customerId = selectedCustomer.id;
       } else if (customerMode === "new") {
         payload.customer = {
@@ -883,8 +888,13 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
             <PriceSummary breakdown={breakdown} isWidespan={isWidespan} disclaimers={disclaimers} />
             {breakdown && (
               <>
+                {isEditing && (
+                  <div className="mt-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+                    Editing quote for <span className="font-semibold">{editingCustomerName}</span>
+                  </div>
+                )}
                 <Button
-                  className="mt-4 w-full"
+                  className="mt-3 w-full"
                   onClick={() => setSaveDialogOpen(true)}
                 >
                   Save Quote
@@ -899,9 +909,21 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                 }}>
                   <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
                     <DialogHeader>
-                      <DialogTitle>Save Quote</DialogTitle>
+                      <DialogTitle>{isEditing ? `Save Quote for ${editingCustomerName}` : "Save Quote"}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
+                      {isEditing ? (
+                        <div className="space-y-3">
+                          <div className="space-y-1">
+                            <Label>Notes</Label>
+                            <Textarea
+                              value={quoteNotes}
+                              onChange={(e) => setQuoteNotes(e.target.value)}
+                              placeholder="Any additional notes..."
+                            />
+                          </div>
+                        </div>
+                      ) : <>
                       {/* Mode Toggle */}
                       <div className="flex gap-2">
                         <Button
@@ -1060,10 +1082,11 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
                         </div>
                       )}
 
+                      </>}
                       <Button
                         className="w-full"
                         onClick={() => handleSaveQuote()}
-                        disabled={saving || (customerMode === "existing" && !selectedCustomer)}
+                        disabled={saving || (!isEditing && customerMode === "existing" && !selectedCustomer)}
                       >
                         {saving ? "Saving..." : "Confirm & Save"}
                       </Button>

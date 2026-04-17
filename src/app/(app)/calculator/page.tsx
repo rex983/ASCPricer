@@ -32,6 +32,8 @@ interface PricingVersion {
 interface SourceQuote {
   config: BuildingConfig;
   customer: { name?: string; email?: string; phone?: string; address?: string; city?: string; state?: string; zip?: string };
+  customerId: string | null;
+  customerName: string | null;
   notes: string | null;
   region_id: string;
 }
@@ -80,6 +82,8 @@ function CalculatorPage() {
             state: data.customer_state || undefined,
             zip: data.customer_zip || undefined,
           },
+          customerId: data.customer_id || null,
+          customerName: data.customer_name || null,
           notes: data.notes,
           region_id: data.region_id,
         };
@@ -344,6 +348,8 @@ function CalculatorPage() {
               initialConfig={sourceQuote?.config}
               initialCustomer={sourceQuote?.customer}
               initialNotes={sourceQuote?.notes ?? undefined}
+              editingCustomerId={sourceQuote?.customerId ?? undefined}
+              editingCustomerName={sourceQuote?.customerName ?? undefined}
             />
           )}
         </div>
