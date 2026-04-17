@@ -42,7 +42,18 @@ export async function GET(
     }
   }
 
-  return NextResponse.json(data);
+  // Look up creator name
+  let created_by_name: string | null = null;
+  if (data.created_by) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", data.created_by)
+      .single();
+    created_by_name = profile?.full_name ?? null;
+  }
+
+  return NextResponse.json({ ...data, created_by_name });
 }
 
 export async function DELETE(

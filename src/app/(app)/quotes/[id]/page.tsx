@@ -122,6 +122,9 @@ export default function QuoteDetailPage() {
             <div className="ml-auto flex items-center gap-3">
               <span className="text-sm text-muted-foreground">
                 Created {formatDate(quote.created_at)}
+                {(quote as unknown as { created_by_name?: string }).created_by_name && (
+                  <> by <span className="font-medium text-foreground">{(quote as unknown as { created_by_name: string }).created_by_name}</span></>
+                )}
               </span>
               <Button variant="outline" size="sm" asChild>
                 <Link href={`/calculator?from=${id}`}>

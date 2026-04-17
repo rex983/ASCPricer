@@ -40,7 +40,18 @@ export async function GET(
     }
   }
 
-  const pdfBuffer = await generateQuotePdf(quote as Quote);
+  // Look up creator name
+  let creatorName: string | null = null;
+  if (quote.created_by) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", quote.created_by)
+      .single();
+    creatorName = profile?.full_name ?? null;
+  }
+
+  const pdfBuffer = await generateQuotePdf(quote as Quote, creatorName);
 
   return new NextResponse(new Uint8Array(pdfBuffer), {
     headers: {
