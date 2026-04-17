@@ -16,13 +16,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { canDeleteRecord, formatCurrency, formatDate, STATUS_COLORS } from "@/lib/utils";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ArrowLeft, FileText, Trash2 } from "lucide-react";
 
 interface CustomerDetail {
@@ -37,9 +30,6 @@ interface CustomerDetail {
   office: string;
   notes: string | null;
   created_at: string;
-  assigned_rep_id: string | null;
-  assigned_rep: { id: string; name: string } | null;
-  available_reps: { id: string; name: string }[];
   quotes: {
     id: string;
     quote_number: string;
@@ -59,7 +49,6 @@ export default function CustomerDetailPage() {
 
   const role = session?.user?.role;
   const canDelete = canDeleteRecord(role);
-  const canAssignRep = role === "admin" || role === "manager";
 
   useEffect(() => {
     fetch(`/api/customers/${id}`)
@@ -150,49 +139,6 @@ export default function CustomerDetailPage() {
               <p className="text-muted-foreground">Office</p>
               <Badge variant="outline">{customer.office}</Badge>
             </div>
-            <div>
-              <p className="text-muted-foreground">Sales Rep</p>
-              {canAssignRep ? (
-                <Select
-                  value={customer.assigned_rep_id || "unassigned"}
-                  onValueChange={async (v) => {
-                    const repId = v === "unassigned" ? null : v;
-                    await fetch(`/api/customers/${id}`, {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ assigned_rep_id: repId }),
-                    });
-                    setCustomer((prev) =>
-                      prev
-                        ? {
-                            ...prev,
-                            assigned_rep_id: repId,
-                            assigned_rep: repId
-                              ? prev.available_reps.find((r) => r.id === repId) || null
-                              : null,
-                          }
-                        : prev
-                    );
-                  }}
-                >
-                  <SelectTrigger className="w-48 h-8 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unassigned">Unassigned</SelectItem>
-                    {customer.available_reps.map((r) => (
-                      <SelectItem key={r.id} value={r.id}>
-                        {r.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <p className="font-medium">
-                  {customer.assigned_rep?.name || "Unassigned"}
-                </p>
-              )}
-            </div>
             {customer.notes && (
               <div className="col-span-full">
                 <p className="text-muted-foreground">Notes</p>
@@ -204,9 +150,9 @@ export default function CustomerDetailPage() {
           {/* Quotes */}
           <div className="space-y-2">
             <h2 className="text-lg font-semibold">
-              Quotes ({customer.quotes.length})
+              Quotes ({(customer.quotes || []).length})
             </h2>
-            {customer.quotes.length === 0 ? (
+            {(customer.quotes || []).length === 0 ? (
               <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
                 <FileText className="mx-auto h-8 w-8 mb-2" />
                 <p>No quotes for this customer yet.</p>
@@ -223,7 +169,7 @@ export default function CustomerDetailPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {customer.quotes.map((q) => (
+                    {(customer.quotes || []).map((q) => (
                       <TableRow key={q.id}>
                         <TableCell>
                           <Link
