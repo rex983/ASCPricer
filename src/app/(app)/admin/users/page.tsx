@@ -144,16 +144,6 @@ export default function UsersPage() {
 
   const [form, setForm] = useState(emptyForm);
 
-  useEffect(() => {
-    if (status === "authenticated" && !isAdminOrManager) {
-      router.replace("/dashboard");
-    }
-  }, [status, isAdminOrManager, router]);
-
-  if (status === "loading" || (status === "authenticated" && !isAdminOrManager)) {
-    return null;
-  }
-
   const set = (field: string, value: string) =>
     setForm((prev) => ({ ...prev, [field]: value }));
 
@@ -173,6 +163,12 @@ export default function UsersPage() {
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+
+  useEffect(() => {
+    if (status === "authenticated" && !isAdminOrManager) {
+      router.replace("/dashboard");
+    }
+  }, [status, isAdminOrManager, router]);
 
   const handleViewAs = async (user: UserProfile) => {
     setViewingAs(user.id);
@@ -391,6 +387,11 @@ export default function UsersPage() {
       day: "numeric",
       year: "numeric",
     }).format(new Date(date));
+
+  // Redirect non-admin/manager users
+  if (status === "loading" || (status === "authenticated" && !isAdminOrManager)) {
+    return null;
+  }
 
   return (
     <>
