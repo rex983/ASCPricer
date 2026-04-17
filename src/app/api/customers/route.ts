@@ -84,9 +84,17 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminClient();
   const UUID_RE =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  const createdBy = UUID_RE.test(session.user.profileId || "")
-    ? session.user.profileId
-    : null;
+  let createdBy: string | null = null;
+  if (UUID_RE.test(session.user.profileId || "")) {
+    createdBy = session.user.profileId;
+  } else if (session.user.email) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("email", session.user.email)
+      .single();
+    createdBy = profile?.id ?? null;
+  }
 
   let assignedRep: string | null = null;
   if (assigned_rep_id) {

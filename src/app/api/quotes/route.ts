@@ -157,15 +157,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Generate quote number + validate profile in parallel
+  // Generate quote number + resolve profile UUID in parallel
   const profileId = session.user.profileId;
-  const needsProfileCheck = !!(profileId && UUID_RE.test(profileId));
+  const isValidUuid = !!(profileId && UUID_RE.test(profileId));
 
   const [quoteNumResult, profileResult] = await Promise.all([
     supabase.rpc("next_quote_number"),
-    needsProfileCheck
+    isValidUuid
       ? supabase.from("profiles").select("id").eq("id", profileId).single()
-      : Promise.resolve({ data: null }),
+      : session.user.email
+        ? supabase.from("profiles").select("id").eq("email", session.user.email).single()
+        : Promise.resolve({ data: null }),
   ]);
 
   if (quoteNumResult.error) {
@@ -175,7 +177,7 @@ export async function POST(req: NextRequest) {
     );
   }
   const quoteNum = quoteNumResult.data;
-  const validUuid = profileResult.data ? profileId : null;
+  const validUuid = profileResult.data?.id ?? null;
 
   // Resolve office: explicit param > session office > null
   const quoteOffice = office || session.user.office || null;
