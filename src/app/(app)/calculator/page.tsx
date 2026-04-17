@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Building2, History, Loader2, Warehouse } from "lucide-react";
 import { AppHeader } from "@/components/layout/app-header";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CalculatorForm } from "@/components/features/calculator/calculator-form";
 import type { PricingMatrices, SpreadsheetType } from "@/types/pricing";
 import type { AppConfig } from "@/lib/pricing/constants";
+import type { BuildingConfig } from "@/types/pricing";
 
 interface Region {
   id: string;
@@ -27,7 +29,25 @@ interface PricingVersion {
   filename: string | null;
 }
 
-export default function CalculatorPage() {
+interface SourceQuote {
+  config: BuildingConfig;
+  customer: { name?: string; email?: string; phone?: string; address?: string; city?: string; state?: string; zip?: string };
+  notes: string | null;
+  region_id: string;
+}
+
+export default function CalculatorPageWrapper() {
+  return (
+    <Suspense>
+      <CalculatorPage />
+    </Suspense>
+  );
+}
+
+function CalculatorPage() {
+  const searchParams = useSearchParams();
+  const fromQuoteId = searchParams.get("from");
+
   const [spreadsheetType, setSpreadsheetType] = useState<SpreadsheetType | null>(null);
   const [regions, setRegions] = useState<Region[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<string>("");
@@ -38,6 +58,39 @@ export default function CalculatorPage() {
   const [versions, setVersions] = useState<PricingVersion[]>([]);
   const [selectedVersion, setSelectedVersion] = useState<string>("current");
   const [appConfig, setAppConfig] = useState<AppConfig>({});
+  const [sourceQuote, setSourceQuote] = useState<SourceQuote | null>(null);
+  const [loadingSource, setLoadingSource] = useState(!!fromQuoteId);
+
+  // Load source quote for "edit quote" flow
+  useEffect(() => {
+    if (!fromQuoteId) return;
+    setLoadingSource(true);
+    fetch(`/api/quotes/${fromQuoteId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.id) return;
+        const sq: SourceQuote = {
+          config: data.config,
+          customer: {
+            name: data.customer_name || undefined,
+            email: data.customer_email || undefined,
+            phone: data.customer_phone || undefined,
+            address: data.customer_address || undefined,
+            city: data.customer_city || undefined,
+            state: data.customer_state || undefined,
+            zip: data.customer_zip || undefined,
+          },
+          notes: data.notes,
+          region_id: data.region_id,
+        };
+        setSourceQuote(sq);
+        // Determine spreadsheet type from width
+        const w = data.config?.width ?? 0;
+        setSpreadsheetType(w >= 32 ? "widespan" : "standard");
+      })
+      .catch(() => {})
+      .finally(() => setLoadingSource(false));
+  }, [fromQuoteId]);
 
   // Fetch app config — re-fetches when region or type changes to get scoped values
   useEffect(() => {
@@ -58,13 +111,20 @@ export default function CalculatorPage() {
     fetch(`/api/pricing/regions?type=${spreadsheetType}`)
       .then((r) => r.json())
       .then((data) => {
-        if (Array.isArray(data)) setRegions(data);
-        setSelectedRegion("");
+        if (Array.isArray(data)) {
+          setRegions(data);
+          // Auto-select region from source quote
+          if (sourceQuote && data.some((r: Region) => r.id === sourceQuote.region_id)) {
+            setSelectedRegion(sourceQuote.region_id);
+          } else {
+            setSelectedRegion("");
+          }
+        }
         setSelectedVersion("current");
         setMatrices(null);
       })
       .catch(() => {});
-  }, [spreadsheetType]);
+  }, [spreadsheetType, sourceQuote]);
 
   // Fetch versions list when region changes
   useEffect(() => {
@@ -113,6 +173,19 @@ export default function CalculatorPage() {
       })
       .finally(() => setLoadingMatrices(false));
   }, [selectedRegion, selectedVersion]);
+
+  // Loading source quote
+  if (loadingSource) {
+    return (
+      <>
+        <AppHeader title="Pricing Calculator" />
+        <div className="flex-1 p-6 text-center text-muted-foreground">
+          <Loader2 className="mx-auto h-8 w-8 animate-spin" />
+          <p className="mt-2">Loading quote...</p>
+        </div>
+      </>
+    );
+  }
 
   // Step 1: Choose building type
   if (!spreadsheetType) {
@@ -268,6 +341,9 @@ export default function CalculatorPage() {
               regionId={selectedRegion}
               regionStates={regions.find((r) => r.id === selectedRegion)?.states || []}
               appConfig={appConfig}
+              initialConfig={sourceQuote?.config}
+              initialCustomer={sourceQuote?.customer}
+              initialNotes={sourceQuote?.notes ?? undefined}
             />
           )}
         </div>

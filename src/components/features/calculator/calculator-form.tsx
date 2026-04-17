@@ -32,12 +32,25 @@ import {
 } from "@/lib/pricing/constants";
 import type { AppConfig } from "@/lib/pricing/constants";
 
+interface InitialCustomer {
+  name?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+}
+
 interface CalculatorFormProps {
   spreadsheetType: SpreadsheetType;
   matrices: PricingMatrices | null;
   regionId: string;
   regionStates?: string[];
   appConfig?: AppConfig;
+  initialConfig?: BuildingConfig;
+  initialCustomer?: InitialCustomer;
+  initialNotes?: string;
 }
 
 type VLItem = { value: string; label: string };
@@ -207,10 +220,10 @@ function getAccessoryOptions(matrices: PricingMatrices | null) {
   return { doors, windows, rollUpEnds, rollUpSides };
 }
 
-export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStates = [], appConfig }: CalculatorFormProps) {
+export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStates = [], appConfig, initialConfig, initialCustomer, initialNotes }: CalculatorFormProps) {
   const isWidespan = spreadsheetType === "widespan";
   const router = useRouter();
-  const [config, setConfig] = useState<BuildingConfig>(() => getDefaultConfig(spreadsheetType));
+  const [config, setConfig] = useState<BuildingConfig>(() => initialConfig ?? getDefaultConfig(spreadsheetType));
   const [saving, setSaving] = useState(false);
   const breakdown = usePricingEngine(config, matrices);
 
@@ -241,10 +254,15 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
   }, [appConfig, isWidespan]);
   const { doors, windows, rollUpEnds, rollUpSides } = useMemo(() => getAccessoryOptions(matrices), [matrices]);
 
-  // Reset config when spreadsheet type changes
+  // Reset config when spreadsheet type changes (skip if pre-filled from existing quote)
+  const [hasInitialized, setHasInitialized] = useState(!!initialConfig);
   useEffect(() => {
+    if (hasInitialized) {
+      setHasInitialized(false);
+      return;
+    }
     setConfig(getDefaultConfig(spreadsheetType));
-  }, [spreadsheetType]);
+  }, [spreadsheetType]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const update = useCallback(<K extends keyof BuildingConfig>(key: K, value: BuildingConfig[K]) => {
     setConfig((prev) => ({ ...prev, [key]: value }));
@@ -273,11 +291,17 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
   const { data: session } = useSession();
   const [customerMode, setCustomerMode] = useState<"new" | "existing">("new");
   const [customerForm, setCustomerForm] = useState({
-    name: "", email: "", phone: "", address: "", city: "", state: "", zip: "",
+    name: initialCustomer?.name ?? "",
+    email: initialCustomer?.email ?? "",
+    phone: initialCustomer?.phone ?? "",
+    address: initialCustomer?.address ?? "",
+    city: initialCustomer?.city ?? "",
+    state: initialCustomer?.state ?? "",
+    zip: initialCustomer?.zip ?? "",
   });
   const setCust = (field: string, value: string) =>
     setCustomerForm((prev) => ({ ...prev, [field]: value }));
-  const [quoteNotes, setQuoteNotes] = useState("");
+  const [quoteNotes, setQuoteNotes] = useState(initialNotes ?? "");
 
   // Existing customer search
   const [customerSearch, setCustomerSearch] = useState("");

@@ -11,7 +11,8 @@ import { Separator } from "@/components/ui/separator";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Quote } from "@/types/quote";
 import type { PriceBreakdown } from "@/types/pricing";
-import { ArrowLeft, FileDown, Loader2, Save } from "lucide-react";
+import { ArrowLeft, FileDown, Loader2, Pencil, Save } from "lucide-react";
+import Link from "next/link";
 
 function PriceLine({ label, value }: { label: string; value: number }) {
   if (value === 0) return null;
@@ -121,6 +122,11 @@ export default function QuoteDetailPage() {
               <span className="text-sm text-muted-foreground">
                 Created {formatDate(quote.created_at)}
               </span>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/calculator?from=${id}`}>
+                  <Pencil className="mr-1 h-4 w-4" /> Edit Quote
+                </Link>
+              </Button>
               <Button variant="outline" size="sm" asChild>
                 <a href={`/api/quotes/${id}/pdf`} target="_blank" rel="noopener noreferrer">
                   <FileDown className="mr-1 h-4 w-4" /> PDF
