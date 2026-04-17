@@ -89,10 +89,10 @@ export async function DELETE(
     }
   }
 
-  // Nullify customer_id on any linked quotes (don't cascade-delete quotes)
+  // Delete all quotes linked to this customer
   await supabase
     .from("asc_quotes")
-    .update({ customer_id: null })
+    .delete()
     .eq("customer_id", id);
 
   const { error } = await supabase
