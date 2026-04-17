@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Quote } from "@/types/quote";
 import type { PriceBreakdown } from "@/types/pricing";
-import { ArrowLeft, FileDown, Loader2, Pencil, Save } from "lucide-react";
+import { ArrowLeft, ClipboardList, FileDown, Loader2, Pencil, Save } from "lucide-react";
 import Link from "next/link";
 
 function PriceLine({ label, value }: { label: string; value: number }) {
@@ -134,6 +134,11 @@ export default function QuoteDetailPage() {
               <Button variant="outline" size="sm" asChild>
                 <a href={`/api/quotes/${id}/pdf`} target="_blank" rel="noopener noreferrer">
                   <FileDown className="mr-1 h-4 w-4" /> PDF
+                </a>
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <a href={`/api/quotes/${id}/order-form`} target="_blank" rel="noopener noreferrer">
+                  <ClipboardList className="mr-1 h-4 w-4" /> Order Form
                 </a>
               </Button>
             </div>
