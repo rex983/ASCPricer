@@ -15,11 +15,11 @@ import { ArrowLeft, FileDown, Loader2, Pencil, Save } from "lucide-react";
 import Link from "next/link";
 
 function PriceLine({ label, value }: { label: string; value: number }) {
-  if (value === 0) return null;
+  if (!value) return null;
   return (
     <div className="flex justify-between text-sm">
       <span className="text-muted-foreground">{label}</span>
-      <span>{formatCurrency(value)}</span>
+      <span>{formatCurrency(value ?? 0)}</span>
     </div>
   );
 }
@@ -105,7 +105,8 @@ export default function QuoteDetailPage() {
     );
   }
 
-  const p = quote.pricing as PriceBreakdown;
+  const p = (quote.pricing || {}) as PriceBreakdown;
+  const cfg = quote.config || {} as Quote["config"];
 
   return (
     <>
@@ -225,14 +226,14 @@ export default function QuoteDetailPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
-                    <div><span className="text-muted-foreground">Width:</span> {quote.config.width}&apos;</div>
-                    <div><span className="text-muted-foreground">Length:</span> {quote.config.length}&apos;</div>
-                    <div><span className="text-muted-foreground">Height:</span> {quote.config.height}&apos;</div>
-                    <div><span className="text-muted-foreground">Gauge:</span> {quote.config.gauge}G</div>
-                    <div><span className="text-muted-foreground">Roof:</span> {quote.config.roofStyle}</div>
-                    <div><span className="text-muted-foreground">Sides:</span> {quote.config.sidesCoverage} x{quote.config.sidesQty}</div>
-                    <div><span className="text-muted-foreground">Ends:</span> {quote.config.endType} x{quote.config.endsQty}</div>
-                    <div><span className="text-muted-foreground">Insulation:</span> {quote.config.insulationType}</div>
+                    <div><span className="text-muted-foreground">Width:</span> {cfg.width}&apos;</div>
+                    <div><span className="text-muted-foreground">Length:</span> {cfg.length}&apos;</div>
+                    <div><span className="text-muted-foreground">Height:</span> {cfg.height}&apos;</div>
+                    <div><span className="text-muted-foreground">Gauge:</span> {cfg.gauge}G</div>
+                    <div><span className="text-muted-foreground">Roof:</span> {cfg.roofStyle || cfg.sheetMetal || "---"}</div>
+                    <div><span className="text-muted-foreground">Sides:</span> {cfg.sidesCoverage} x{cfg.sidesQty}</div>
+                    <div><span className="text-muted-foreground">Ends:</span> {cfg.endType} x{cfg.endsQty}</div>
+                    <div><span className="text-muted-foreground">Insulation:</span> {cfg.insulationType || "---"}</div>
                   </div>
                 </CardContent>
               </Card>
@@ -266,7 +267,7 @@ export default function QuoteDetailPage() {
                     <span>{formatCurrency(p.subtotal)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Tax ({(p.taxRate * 100).toFixed(2)}%)</span>
+                    <span className="text-muted-foreground">Tax ({((p.taxRate || 0) * 100).toFixed(2)}%)</span>
                     <span>{formatCurrency(p.taxAmount)}</span>
                   </div>
                   <PriceLine label="Labor / Equipment" value={p.laborEquipment} />
