@@ -374,9 +374,19 @@ export async function GET(
     creatorName = profile?.full_name ?? null;
   }
 
-  // Determine which form to use based on customer state
-  const customerState = ((quote.customer_state as string) || "").toUpperCase().trim();
-  const isWestCoast = WEST_COAST_STATES.includes(customerState);
+  // Determine which form to use based on the region/price book
+  let isWestCoast = false;
+  if (quote.region_id) {
+    const { data: region } = await supabase
+      .from("asc_regions")
+      .select("states")
+      .eq("id", quote.region_id)
+      .single();
+    if (region?.states) {
+      const regionStates = (region.states as string[]).map((s: string) => s.toUpperCase().trim());
+      isWestCoast = regionStates.some((s: string) => WEST_COAST_STATES.includes(s));
+    }
+  }
   const templateName = isWestCoast ? "west-coast.pdf" : "standard.pdf";
 
   const templatePath = path.join(process.cwd(), "public", "order-forms", templateName);
