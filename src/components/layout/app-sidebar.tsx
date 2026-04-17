@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -38,7 +39,18 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const role = session?.user?.role;
-  const showAdmin = role === "admin" || role === "manager";
+  const isAdminOrManager = role === "admin" || role === "manager";
+  const [impersonating, setImpersonating] = useState(false);
+
+  useEffect(() => {
+    if (!isAdminOrManager) return;
+    fetch("/api/view-as")
+      .then((r) => r.json())
+      .then((d) => setImpersonating(!!d.isImpersonating))
+      .catch(() => {});
+  }, [isAdminOrManager, pathname]);
+
+  const showAdmin = isAdminOrManager && !impersonating;
 
   return (
     <Sidebar>
