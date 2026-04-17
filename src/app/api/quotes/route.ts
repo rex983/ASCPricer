@@ -157,19 +157,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Generate quote number + resolve profile UUID in parallel
+  // Generate quote number + resolve profile UUID
   const profileId = session.user.profileId;
   const isValidUuid = !!(profileId && UUID_RE.test(profileId));
 
-  const [quoteNumResult, profileResult] = await Promise.all([
-    supabase.rpc("next_quote_number"),
-    isValidUuid
-      ? supabase.from("profiles").select("id").eq("id", profileId).single()
-      : session.user.email
-        ? supabase.from("profiles").select("id").eq("email", session.user.email).single()
-        : Promise.resolve({ data: null }),
-  ]);
-
+  const quoteNumResult = await supabase.rpc("next_quote_number");
   if (quoteNumResult.error) {
     return NextResponse.json(
       { error: "Failed to generate quote number" },
@@ -177,7 +169,17 @@ export async function POST(req: NextRequest) {
     );
   }
   const quoteNum = quoteNumResult.data;
-  const validUuid = profileResult.data?.id ?? null;
+
+  // Resolve the user's real profile UUID (handles non-UUID profileIds like "admin-001")
+  let validUuid: string | null = null;
+  if (isValidUuid) {
+    const { data } = await supabase.from("profiles").select("id").eq("id", profileId).single();
+    validUuid = data?.id ?? null;
+  }
+  if (!validUuid && session.user.email) {
+    const { data } = await supabase.from("profiles").select("id").eq("email", session.user.email).single();
+    validUuid = data?.id ?? null;
+  }
 
   // Resolve office: explicit param > session office > null
   const quoteOffice = office || session.user.office || null;
