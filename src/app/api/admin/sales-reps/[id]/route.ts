@@ -82,19 +82,6 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
   const { id } = await ctx.params;
   const supabase = createAdminClient();
 
-  // Check for assigned customers
-  const { count } = await supabase
-    .from("asc_customers")
-    .select("id", { count: "exact", head: true })
-    .eq("assigned_rep_id", id);
-
-  if (count && count > 0) {
-    return NextResponse.json(
-      { error: `Cannot delete: ${count} customer(s) assigned to this rep. Reassign or deactivate instead.` },
-      { status: 409 }
-    );
-  }
-
   const { error } = await supabase
     .from("asc_sales_reps")
     .delete()

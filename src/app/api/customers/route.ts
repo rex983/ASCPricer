@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from("asc_customers")
-    .select("id, name, email, phone, city, state, office, assigned_rep_id, created_at")
+    .select("id, name, email, phone, city, state, office, created_at")
     .order("name", { ascending: true })
     .limit(200);
 
@@ -114,7 +114,6 @@ export async function POST(req: NextRequest) {
       notes: notes || null,
       office,
       created_by: createdBy,
-      assigned_rep_id: assignedRep,
     })
     .select()
     .single();

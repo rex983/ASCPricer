@@ -196,19 +196,7 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
     .eq("profile_id", id)
     .maybeSingle();
 
-  if (rep) {
-    const { count: custCount } = await supabase
-      .from("asc_customers")
-      .select("id", { count: "exact", head: true })
-      .eq("assigned_rep_id", rep.id);
-
-    if (custCount && custCount > 0) {
-      return NextResponse.json(
-        { error: `Cannot delete: ${custCount} customer(s) assigned. Reassign them first.` },
-        { status: 409 }
-      );
-    }
-  }
+  if (rep) {}
 
   // Check for quotes
   const { count: quoteCount } = await supabase

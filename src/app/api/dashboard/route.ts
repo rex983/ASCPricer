@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
   // Build customer query based on role
   let customerQuery = supabase
     .from("asc_customers")
-    .select("id, name, assigned_rep_id, created_at, created_by");
+    .select("id, name, created_at, created_by");
 
   if (role === "sales_rep" || role === "bst") {
     customerQuery = customerQuery.eq("created_by", profileId);

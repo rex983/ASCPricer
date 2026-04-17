@@ -21,23 +21,12 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Fetch customer counts per rep
-  const { data: customerCounts } = await supabase
-    .from("asc_customers")
-    .select("assigned_rep_id");
-
   // Fetch quote counts per rep (via created_by matching profile_id)
   const { data: quotes } = await supabase
     .from("asc_quotes")
     .select("created_by, status, total");
 
-  // Build stats maps
   const customerCountMap: Record<string, number> = {};
-  for (const c of customerCounts ?? []) {
-    if (c.assigned_rep_id) {
-      customerCountMap[c.assigned_rep_id] = (customerCountMap[c.assigned_rep_id] || 0) + 1;
-    }
-  }
 
   const quoteStatsMap: Record<string, { count: number; total: number }> = {};
   for (const q of quotes ?? []) {

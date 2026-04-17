@@ -62,20 +62,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Fetch customer counts per sales rep
-  const repIds = Object.values(repsMap).map((r) => r.id);
   const customerCountMap: Record<string, number> = {};
-  if (repIds.length > 0) {
-    const { data: customers } = await supabase
-      .from("asc_customers")
-      .select("assigned_rep_id");
-
-    for (const c of customers ?? []) {
-      if (c.assigned_rep_id) {
-        customerCountMap[c.assigned_rep_id] = (customerCountMap[c.assigned_rep_id] || 0) + 1;
-      }
-    }
-  }
 
   // Fetch quote stats per profile (quotes use created_by = profile_id)
   const quoteStatsMap: Record<string, { count: number; total: number }> = {};

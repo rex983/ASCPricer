@@ -40,12 +40,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
           .order("created_at", { ascending: false })
           .limit(50)
       : Promise.resolve({ data: [] }),
-    supabase
-      .from("asc_customers")
-      .select("id, name, email, phone, city, state, office, created_at")
-      .eq("assigned_rep_id", id)
-      .order("created_at", { ascending: false })
-      .limit(50),
+    Promise.resolve({ data: [] }),
     profileId
       ? supabase
           .from("asc_audit_log")
