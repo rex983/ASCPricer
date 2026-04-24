@@ -9,7 +9,7 @@ const ALLOWED_ROLES = ["admin", "manager"];
 const VALID_USER_ROLES = ["admin", "manager", "sales_rep", "bst"];
 const VALID_OFFICES = ["Harbor", "Marion"];
 
-/** PATCH /api/admin/users/[id] — update profile + linked sales rep */
+/** PATCH /api/admin/users/[id] — update profile */
 export async function PATCH(req: NextRequest, ctx: Ctx) {
   const session = await auth();
   if (!session?.user || !ALLOWED_ROLES.includes(session.user.role)) {
@@ -18,24 +18,20 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
   const { id } = await ctx.params;
   const body = await req.json();
-  const profileUpdates: Record<string, unknown> = {};
-  const repUpdates: Record<string, unknown> = {};
+  const updates: Record<string, unknown> = {};
 
-  // Profile fields
   if (body.name !== undefined) {
     if (!body.name?.trim()) {
       return NextResponse.json({ error: "Name cannot be empty" }, { status: 400 });
     }
-    profileUpdates.full_name = body.name.trim();
-    repUpdates.name = body.name.trim();
+    updates.full_name = body.name.trim();
   }
 
   if (body.email !== undefined) {
     if (!body.email?.trim()) {
       return NextResponse.json({ error: "Email cannot be empty" }, { status: 400 });
     }
-    profileUpdates.email = body.email.trim().toLowerCase();
-    repUpdates.email = body.email.trim().toLowerCase();
+    updates.email = body.email.trim().toLowerCase();
   }
 
   if (body.role !== undefined) {
@@ -48,25 +44,17 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
         { status: 400 }
       );
     }
-    profileUpdates.role = body.role;
+    updates.role = body.role;
   }
 
   if (body.office !== undefined) {
     if (body.office && !VALID_OFFICES.includes(body.office)) {
       return NextResponse.json({ error: "Office must be Harbor or Marion" }, { status: 400 });
     }
-    profileUpdates.office = body.office || null;
-    repUpdates.office = body.office || null;
+    updates.office = body.office || null;
   }
 
-  // Sales rep fields
-  if (body.phone !== undefined) repUpdates.phone = body.phone || null;
-  if (body.is_active !== undefined) repUpdates.is_active = Boolean(body.is_active);
-
-  const hasProfileUpdates = Object.keys(profileUpdates).length > 0;
-  const hasRepUpdates = Object.keys(repUpdates).length > 0;
-
-  if (!hasProfileUpdates && !hasRepUpdates) {
+  if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "No updates provided" }, { status: 400 });
   }
 
@@ -86,22 +74,24 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   }
 
   // Prevent demoting the primary admin
-  const { data: targetUser } = await supabase
-    .from("profiles")
-    .select("email, full_name")
-    .eq("id", id)
-    .single();
+  if (updates.role && updates.role !== "admin") {
+    const { data: targetUser } = await supabase
+      .from("profiles")
+      .select("email")
+      .eq("id", id)
+      .single();
 
-  if (targetUser?.email === "rex@bigbuildingsdirect.com" && profileUpdates.role && profileUpdates.role !== "admin") {
-    return NextResponse.json({ error: "Cannot change the primary admin's role" }, { status: 403 });
+    if (targetUser?.email === "rex@bigbuildingsdirect.com") {
+      return NextResponse.json({ error: "Cannot change the primary admin's role" }, { status: 403 });
+    }
   }
 
   // Check email uniqueness if changing email
-  if (profileUpdates.email) {
+  if (updates.email) {
     const { data: dup } = await supabase
       .from("profiles")
       .select("id")
-      .eq("email", profileUpdates.email)
+      .eq("email", updates.email)
       .neq("id", id)
       .maybeSingle();
 
@@ -110,59 +100,31 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     }
   }
 
-  // Update profile
-  let profile = null;
-  if (hasProfileUpdates) {
-    const { data, error } = await supabase
-      .from("profiles")
-      .update(profileUpdates)
-      .eq("id", id)
-      .select()
-      .single();
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
 
-    if (error) {
-      console.error("users PATCH error:", error);
-      return NextResponse.json({ error: "Database operation failed" }, { status: 500 });
-    }
-    profile = data;
-  }
-
-  // Update or create linked sales rep
-  if (hasRepUpdates) {
-    const { data: existingRep } = await supabase
-      .from("asc_sales_reps")
-      .select("id")
-      .eq("profile_id", id)
-      .maybeSingle();
-
-    if (existingRep) {
-      // Update existing rep
-      await supabase
-        .from("asc_sales_reps")
-        .update(repUpdates)
-        .eq("profile_id", id);
-    }
+  if (error) {
+    console.error("users PATCH error:", error);
+    return NextResponse.json({ error: "Database operation failed" }, { status: 500 });
   }
 
   await logAudit({
     userId: session.user.profileId,
     userEmail: session.user.email,
-    action: body.is_active !== undefined ? "toggle_user" : "update_user",
+    action: "update_user",
     resourceType: "profile",
     resourceId: id,
-    details: { ...profileUpdates, ...repUpdates },
+    details: updates,
   });
 
-  // Re-fetch the profile for the response
-  if (!profile) {
-    const { data } = await supabase.from("profiles").select("*").eq("id", id).single();
-    profile = data;
-  }
-
-  return NextResponse.json(profile ? { ...profile, name: profile.full_name } : profile);
+  return NextResponse.json({ ...profile, name: profile.full_name });
 }
 
-/** DELETE /api/admin/users/[id] — delete profile + linked sales rep */
+/** DELETE /api/admin/users/[id] — delete profile */
 export async function DELETE(_req: NextRequest, ctx: Ctx) {
   const session = await auth();
   if (!session?.user || session.user.role !== "admin") {
@@ -190,15 +152,6 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "Cannot delete the primary admin account" }, { status: 403 });
   }
 
-  // Check for assigned customers (via sales rep)
-  const { data: rep } = await supabase
-    .from("asc_sales_reps")
-    .select("id")
-    .eq("profile_id", id)
-    .maybeSingle();
-
-  if (rep) {}
-
   // Check for quotes
   const { count: quoteCount } = await supabase
     .from("asc_quotes")
@@ -212,12 +165,6 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
     );
   }
 
-  // Delete linked sales rep first (if exists)
-  if (rep) {
-    await supabase.from("asc_sales_reps").delete().eq("id", rep.id);
-  }
-
-  // Delete profile
   const { error } = await supabase.from("profiles").delete().eq("id", id);
 
   if (error) {

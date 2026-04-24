@@ -6,7 +6,7 @@ import { logAudit } from "@/lib/audit";
 const ALLOWED_ROLES = ["admin", "manager"];
 const VALID_USER_ROLES = ["admin", "manager", "sales_rep", "bst"];
 const VALID_OFFICES = ["Harbor", "Marion"];
-/** GET /api/admin/users — list all profiles with sales rep data + stats */
+/** GET /api/admin/users — list all profiles + stats */
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user || !ALLOWED_ROLES.includes(session.user.role)) {
@@ -39,33 +39,7 @@ export async function GET(req: NextRequest) {
   const profiles = data ?? [];
   const profileIds = profiles.map((p) => p.id).filter(Boolean);
 
-  // Fetch linked sales reps
-  let repsMap: Record<string, {
-    id: string;
-    phone: string | null;
-    is_active: boolean;
-  }> = {};
-
-  if (profileIds.length > 0) {
-    const { data: reps } = await supabase
-      .from("asc_sales_reps")
-      .select("id, profile_id, phone, is_active")
-      .in("profile_id", profileIds);
-
-    for (const r of reps ?? []) {
-      if (r.profile_id) {
-        repsMap[r.profile_id] = {
-          id: r.id,
-          phone: r.phone,
-          is_active: r.is_active,
-        };
-      }
-    }
-  }
-
-  const customerCountMap: Record<string, number> = {};
-
-  // Fetch quote stats per profile (quotes use created_by = profile_id)
+  // Fetch quote stats per profile
   const quoteStatsMap: Record<string, { count: number; total: number }> = {};
   if (profileIds.length > 0) {
     const { data: quotes } = await supabase
@@ -83,22 +57,12 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const enriched = profiles.map((p) => {
-    const rep = repsMap[p.id] ?? null;
-    return {
-      ...p,
-      // DB column is full_name; expose as `name` for the UI
-      name: p.full_name ?? null,
-      // Sales rep fields (null if no linked rep)
-      rep_id: rep?.id ?? null,
-      phone: rep?.phone ?? null,
-      is_active: rep?.is_active ?? null,
-      // Stats
-      customer_count: rep ? (customerCountMap[rep.id] || 0) : 0,
-      quote_count: quoteStatsMap[p.id]?.count || 0,
-      quote_total: quoteStatsMap[p.id]?.total || 0,
-    };
-  });
+  const enriched = profiles.map((p) => ({
+    ...p,
+    name: p.full_name ?? null,
+    quote_count: quoteStatsMap[p.id]?.count || 0,
+    quote_total: quoteStatsMap[p.id]?.total || 0,
+  }));
 
   return NextResponse.json({ users: enriched, total: count ?? 0 });
 }

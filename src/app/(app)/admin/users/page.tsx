@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import {
   Plus,
   Pencil,
@@ -22,7 +21,6 @@ import {
 import { AppHeader } from "@/components/layout/app-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -58,12 +56,6 @@ interface UserProfile {
   role: UserRole;
   office: Office | null;
   created_at: string;
-  // Sales rep data (null if no linked rep)
-  rep_id: string | null;
-  phone: string | null;
-  is_active: boolean | null;
-  // Stats
-  customer_count: number;
   quote_count: number;
   quote_total: number;
 }
@@ -109,7 +101,6 @@ const emptyForm = {
   email: "",
   role: "sales_rep" as string,
   office: "" as string,
-  phone: "",
 };
 
 export default function UsersPage() {
@@ -130,7 +121,6 @@ export default function UsersPage() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [officeFilter, setOfficeFilter] = useState("all");
-  const [toggling, setToggling] = useState<string | null>(null);
   const [viewingAs, setViewingAs] = useState<string | null>(null);
 
   const [importing, setImporting] = useState(false);
@@ -191,21 +181,6 @@ export default function UsersPage() {
     }
   };
 
-  const handleToggle = async (user: UserProfile) => {
-    if (!user.rep_id) return;
-    setToggling(user.id);
-    try {
-      await fetch(`/api/admin/users/${user.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ is_active: !user.is_active }),
-      });
-      await fetchUsers();
-    } finally {
-      setToggling(null);
-    }
-  };
-
   const handleCsvUpload = async (file: File) => {
     setImporting(true);
     setImportResult(null);
@@ -244,16 +219,13 @@ export default function UsersPage() {
 
   const downloadCsv = () => {
     const escape = (v: string) => (v.includes(",") || v.includes('"') ? `"${v.replace(/"/g, '""')}"` : v);
-    const header = "name,email,role,office,phone,active,customers,quotes,total_sales";
+    const header = "name,email,role,office,quotes,total_sales";
     const rows = filtered.map((u) =>
       [
         escape(u.name || ""),
         escape(u.email),
         u.role,
         u.office || "",
-        u.phone || "",
-        u.is_active !== null ? (u.is_active ? "yes" : "no") : "",
-        String(u.customer_count),
         String(u.quote_count),
         String(u.quote_total),
       ].join(",")
@@ -282,7 +254,6 @@ export default function UsersPage() {
       email: user.email,
       role: user.role,
       office: user.office || "",
-      phone: user.phone || "",
     });
     setError(null);
     setDialogOpen(true);
@@ -311,7 +282,6 @@ export default function UsersPage() {
         name: form.name.trim(),
         email: form.email.trim(),
         office: form.office || null,
-        phone: form.phone || null,
       };
 
       if (isAdmin) {
@@ -372,7 +342,6 @@ export default function UsersPage() {
     );
   });
 
-  const activeCount = users.filter((u) => u.is_active === true).length;
   const roleCounts = users.reduce(
     (acc, u) => {
       acc[u.role] = (acc[u.role] || 0) + 1;
@@ -401,7 +370,6 @@ export default function UsersPage() {
           {/* Stats */}
           <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="secondary">{users.length} total</Badge>
-            <Badge variant="secondary">{activeCount} active</Badge>
             {Object.entries(roleCounts).map(([role, count]) => (
               <Badge key={role} variant="outline" className="text-xs">
                 {ROLE_LABELS[role as UserRole] || role}: {count}
@@ -524,11 +492,9 @@ export default function UsersPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-12">Active</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Office</TableHead>
-                    <TableHead className="text-right">Customers</TableHead>
                     <TableHead className="text-right">Quotes</TableHead>
                     <TableHead className="text-right">Total Sales</TableHead>
                     <TableHead className="w-20" />
@@ -539,40 +505,12 @@ export default function UsersPage() {
                     const RoleIcon = ROLE_ICONS[user.role];
                     const isSelf = user.id === session?.user?.profileId;
                     const isPrimaryAdmin = user.email === "rex@bigbuildingsdirect.com";
-                    const hasRep = user.rep_id !== null;
 
                     return (
-                      <TableRow
-                        key={user.id}
-                        className={hasRep && user.is_active === false ? "opacity-50" : ""}
-                      >
-                        <TableCell>
-                          {hasRep ? (
-                            toggling === user.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Switch
-                                checked={user.is_active ?? false}
-                                onCheckedChange={() => handleToggle(user)}
-                                className="scale-90"
-                              />
-                            )
-                          ) : (
-                            <span className="text-muted-foreground text-xs">---</span>
-                          )}
-                        </TableCell>
+                      <TableRow key={user.id}>
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
-                            {hasRep ? (
-                              <Link
-                                href={`/admin/sales-reps/${user.rep_id}`}
-                                className="text-primary hover:underline"
-                              >
-                                {user.name || user.email.split("@")[0]}
-                              </Link>
-                            ) : (
-                              <span>{user.name || user.email.split("@")[0]}</span>
-                            )}
+                            <span>{user.name || user.email.split("@")[0]}</span>
                             {isSelf && (
                               <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                                 You
@@ -595,9 +533,6 @@ export default function UsersPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          {user.customer_count || <span className="text-muted-foreground text-xs">0</span>}
-                        </TableCell>
-                        <TableCell className="text-right">
                           {user.quote_count || <span className="text-muted-foreground text-xs">0</span>}
                         </TableCell>
                         <TableCell className="text-right">
@@ -606,21 +541,21 @@ export default function UsersPage() {
                         <TableCell>
                           <div className="flex gap-1">
                             {canImpersonate && !isSelf && user.role !== "admin" && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-7 gap-1 px-2 text-xs"
-                                  disabled={viewingAs === user.id}
-                                  onClick={() => handleViewAs(user)}
-                                >
-                                  {viewingAs === user.id ? (
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                  ) : (
-                                    <Eye className="h-3 w-3" />
-                                  )}
-                                  View As
-                                </Button>
-                              )}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 gap-1 px-2 text-xs"
+                                disabled={viewingAs === user.id}
+                                onClick={() => handleViewAs(user)}
+                              >
+                                {viewingAs === user.id ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Eye className="h-3 w-3" />
+                                )}
+                                View As
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="icon"
@@ -769,18 +704,6 @@ export default function UsersPage() {
               </div>
             </div>
 
-            {/* Phone */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>Phone</Label>
-                <Input
-                  value={form.phone}
-                  onChange={(e) => set("phone", e.target.value)}
-                  placeholder="(555) 123-4567"
-                />
-              </div>
-            </div>
-
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
           <DialogFooter>
@@ -803,8 +726,7 @@ export default function UsersPage() {
             <DialogDescription>
               Are you sure you want to permanently delete{" "}
               <strong>{deleteConfirm?.name || deleteConfirm?.email}</strong>?
-              {deleteConfirm?.rep_id && " This will also remove their sales rep profile."}
-              {" "}This action cannot be undone.
+              This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           {error && <p className="text-sm text-destructive">{error}</p>}
