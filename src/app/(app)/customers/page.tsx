@@ -92,9 +92,9 @@ export default function CustomersPage() {
   return (
     <>
       <AppHeader title="Customers" />
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-4 sm:p-6">
         <div className="mx-auto max-w-5xl space-y-4">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -136,14 +136,14 @@ export default function CustomersPage() {
               <p>No customers yet.</p>
             </div>
           ) : (
-            <div className="rounded-lg border">
+            <div className="rounded-lg border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Location</TableHead>
+                    <TableHead className="hidden sm:table-cell">Email</TableHead>
+                    <TableHead className="hidden md:table-cell">Phone</TableHead>
+                    <TableHead className="hidden sm:table-cell">Location</TableHead>
                     <TableHead>Office</TableHead>
                     {canDelete && <TableHead className="w-10" />}
                   </TableRow>
@@ -159,9 +159,9 @@ export default function CustomersPage() {
                           {c.name}
                         </Link>
                       </TableCell>
-                      <TableCell>{c.email || "---"}</TableCell>
-                      <TableCell>{c.phone || "---"}</TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell">{c.email || "---"}</TableCell>
+                      <TableCell className="hidden md:table-cell">{c.phone || "---"}</TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         {[c.city, c.state].filter(Boolean).join(", ") || "---"}
                       </TableCell>
                       <TableCell>

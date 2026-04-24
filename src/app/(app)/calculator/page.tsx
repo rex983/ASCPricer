@@ -242,10 +242,10 @@ function CalculatorPage() {
   return (
     <>
       <AppHeader title="Pricing Calculator" />
-      <div className="flex-1 p-6">
-        <div className="mx-auto max-w-5xl space-y-6">
+      <div className="flex-1 p-4 sm:p-6">
+        <div className="mx-auto max-w-5xl space-y-4 sm:space-y-6">
           {/* Type + Region bar */}
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
             <Button
               variant="outline"
               size="sm"
@@ -267,7 +267,7 @@ function CalculatorPage() {
               {spreadsheetType === "standard" ? "Standard (12'–30')" : "Widespan (32'–60')"}
             </div>
             <Select value={selectedRegion} onValueChange={setSelectedRegion}>
-              <SelectTrigger className="w-64">
+              <SelectTrigger className="w-full sm:w-64">
                 <SelectValue placeholder="Select a region..." />
               </SelectTrigger>
               <SelectContent>
@@ -280,7 +280,7 @@ function CalculatorPage() {
             </Select>
             {selectedRegion && versions.length > 1 && (
               <Select value={selectedVersion} onValueChange={setSelectedVersion}>
-                <SelectTrigger className="w-72">
+                <SelectTrigger className="w-full sm:w-72">
                   <History className="mr-1 h-4 w-4 shrink-0" />
                   <SelectValue />
                 </SelectTrigger>

@@ -484,7 +484,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
           <CardContent className="pt-4 pb-3 space-y-3">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Sides & Ends</p>
             {/* Sides row */}
-            <div className="grid grid-cols-3 gap-x-4 gap-y-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
               <div className="space-y-1">
                 <Label className="text-xs">Side Coverage</Label>
                 <Select
@@ -526,7 +526,7 @@ export function CalculatorForm({ spreadsheetType, matrices, regionId, regionStat
               )}
             </div>
             {/* Ends row */}
-            <div className="grid grid-cols-3 gap-x-4 gap-y-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
               <div className="space-y-1">
                 <Label className="text-xs"># Ends</Label>
                 <Select value={String(config.endsQty)} onValueChange={(v) => update("endsQty", Number(v) as 0 | 1 | 2)}>

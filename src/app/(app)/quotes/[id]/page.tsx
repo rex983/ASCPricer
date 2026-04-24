@@ -111,36 +111,40 @@ export default function QuoteDetailPage() {
   return (
     <>
       <AppHeader title={quote.quote_number} />
-      <div className="flex-1 p-6">
-        <div className="mx-auto max-w-5xl space-y-6">
+      <div className="flex-1 p-4 sm:p-6">
+        <div className="mx-auto max-w-5xl space-y-4 sm:space-y-6">
           {/* Header bar */}
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm" onClick={() => router.push("/quotes")}>
-              <ArrowLeft className="mr-1 h-4 w-4" /> Back
-            </Button>
-            <h2 className="text-xl font-semibold">{quote.quote_number}</h2>
-            <div className="ml-auto flex items-center gap-3">
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <Button variant="outline" size="sm" onClick={() => router.push("/quotes")}>
+                <ArrowLeft className="mr-1 h-4 w-4" /> Back
+              </Button>
+              <h2 className="text-lg sm:text-xl font-semibold">{quote.quote_number}</h2>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm text-muted-foreground">
                 Created {formatDate(quote.created_at)}
                 {(quote as unknown as { created_by_name?: string }).created_by_name && (
                   <> by <span className="font-medium text-foreground">{(quote as unknown as { created_by_name: string }).created_by_name}</span></>
                 )}
               </span>
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`/calculator?from=${id}`}>
-                  <Pencil className="mr-1 h-4 w-4" /> Edit Quote
-                </Link>
-              </Button>
-              <Button variant="outline" size="sm" asChild>
-                <a href={`/api/quotes/${id}/pdf`} target="_blank" rel="noopener noreferrer">
-                  <FileDown className="mr-1 h-4 w-4" /> PDF
-                </a>
-              </Button>
-              <Button variant="outline" size="sm" asChild>
-                <a href={`/api/quotes/${id}/order-form`} target="_blank" rel="noopener noreferrer">
-                  <ClipboardList className="mr-1 h-4 w-4" /> Order Form
-                </a>
-              </Button>
+              <div className="flex flex-wrap gap-2 sm:ml-auto">
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/calculator?from=${id}`}>
+                    <Pencil className="mr-1 h-4 w-4" /> Edit
+                  </Link>
+                </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <a href={`/api/quotes/${id}/pdf`} target="_blank" rel="noopener noreferrer">
+                    <FileDown className="mr-1 h-4 w-4" /> PDF
+                  </a>
+                </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <a href={`/api/quotes/${id}/order-form`} target="_blank" rel="noopener noreferrer">
+                    <ClipboardList className="mr-1 h-4 w-4" /> Order Form
+                  </a>
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -153,7 +157,7 @@ export default function QuoteDetailPage() {
                   <CardTitle className="text-base">Customer Information</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className="text-xs">Name</Label>
                       <Input

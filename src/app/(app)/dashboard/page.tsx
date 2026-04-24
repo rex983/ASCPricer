@@ -190,13 +190,13 @@ export default function DashboardPage() {
   return (
     <>
       <AppHeader title="Dashboard" />
-      <div className="flex-1 p-6">
-        <div className="mx-auto max-w-5xl space-y-6">
+      <div className="flex-1 p-4 sm:p-6">
+        <div className="mx-auto max-w-5xl space-y-4 sm:space-y-6">
           {/* Date Range Picker */}
-          <div className="flex flex-wrap items-center gap-3 rounded-lg border p-3">
-            <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 rounded-lg border p-3">
+            <Calendar className="hidden sm:block h-4 w-4 text-muted-foreground shrink-0" />
             <Select value={preset} onValueChange={handlePresetChange}>
-              <SelectTrigger className="h-9 w-36 text-sm">
+              <SelectTrigger className="h-9 w-full sm:w-36 text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -207,10 +207,10 @@ export default function DashboardPage() {
                 ))}
               </SelectContent>
             </Select>
-            <div className="flex items-center gap-2">
+            <div className="flex w-full sm:w-auto items-center gap-2">
               <Input
                 type="date"
-                className="h-9 w-[150px] text-sm"
+                className="h-9 flex-1 sm:w-[150px] text-sm"
                 value={startDate}
                 onChange={(e) => {
                   setStartDate(e.target.value);
@@ -220,7 +220,7 @@ export default function DashboardPage() {
               <span className="text-sm text-muted-foreground">to</span>
               <Input
                 type="date"
-                className="h-9 w-[150px] text-sm"
+                className="h-9 flex-1 sm:w-[150px] text-sm"
                 value={endDate}
                 onChange={(e) => {
                   setEndDate(e.target.value);
@@ -345,13 +345,14 @@ export default function DashboardPage() {
                   No quotes yet.
                 </div>
               ) : (
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Quote #</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Total</TableHead>
-                      <TableHead>Date</TableHead>
+                      <TableHead className="hidden sm:table-cell">Date</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -373,13 +374,14 @@ export default function DashboardPage() {
                         <TableCell className="text-right">
                           {formatCurrency(q.total)}
                         </TableCell>
-                        <TableCell className="text-muted-foreground text-xs">
+                        <TableCell className="hidden sm:table-cell text-muted-foreground text-xs">
                           {formatDate(q.created_at)}
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               )}
             </div>
 

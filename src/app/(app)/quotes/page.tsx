@@ -68,10 +68,10 @@ export default function QuotesPage() {
   return (
     <>
       <AppHeader title="Quotes" />
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-4 sm:p-6">
         <div className="mx-auto max-w-5xl space-y-4">
           {/* Filters */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -95,16 +95,16 @@ export default function QuotesPage() {
               <p>No quotes yet. Create one from the calculator.</p>
             </div>
           ) : (
-            <div className="rounded-lg border">
+            <div className="rounded-lg border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Quote #</TableHead>
                     <TableHead>Customer</TableHead>
-                    <TableHead>State</TableHead>
-                    {showOffice && <TableHead>Office</TableHead>}
+                    <TableHead className="hidden sm:table-cell">State</TableHead>
+                    {showOffice && <TableHead className="hidden md:table-cell">Office</TableHead>}
                     <TableHead className="text-right">Total</TableHead>
-                    <TableHead>Date</TableHead>
+                    <TableHead className="hidden sm:table-cell">Date</TableHead>
                     {canDelete && <TableHead className="w-10" />}
                   </TableRow>
                 </TableHeader>
@@ -120,9 +120,9 @@ export default function QuotesPage() {
                         </Link>
                       </TableCell>
                       <TableCell>{q.customer_name || "---"}</TableCell>
-                      <TableCell>{q.customer_state || "---"}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{q.customer_state || "---"}</TableCell>
                       {showOffice && (
-                        <TableCell>
+                        <TableCell className="hidden md:table-cell">
                           {q.office ? (
                             <Badge variant="outline">{q.office}</Badge>
                           ) : (
@@ -133,7 +133,7 @@ export default function QuotesPage() {
                       <TableCell className="text-right font-medium">
                         {formatCurrency(q.total)}
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
+                      <TableCell className="hidden sm:table-cell text-muted-foreground">
                         {formatDate(q.created_at)}
                       </TableCell>
                       {canDelete && (

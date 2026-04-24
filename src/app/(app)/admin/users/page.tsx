@@ -365,7 +365,7 @@ export default function UsersPage() {
   return (
     <>
       <AppHeader title="User Management" />
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-4 sm:p-6">
         <div className="mx-auto max-w-7xl space-y-4">
           {/* Stats */}
           <div className="flex items-center gap-2 flex-wrap">
@@ -420,41 +420,43 @@ export default function UsersPage() {
           )}
 
           {/* Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="relative max-w-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative w-full sm:w-auto">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Search users..."
-                  className="pl-9 w-64"
+                  className="pl-9 w-full sm:w-64"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
-              <Select value={roleFilter} onValueChange={setRoleFilter}>
-                <SelectTrigger className="w-36">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ROLE_FILTERS.map((rf) => (
-                    <SelectItem key={rf.value} value={rf.value}>
-                      {rf.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={officeFilter} onValueChange={setOfficeFilter}>
-                <SelectTrigger className="w-36">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {OFFICE_FILTERS.map((of_) => (
-                    <SelectItem key={of_.value} value={of_.value}>
-                      {of_.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select value={roleFilter} onValueChange={setRoleFilter}>
+                  <SelectTrigger className="w-[calc(50vw-2rem)] sm:w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ROLE_FILTERS.map((rf) => (
+                      <SelectItem key={rf.value} value={rf.value}>
+                        {rf.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={officeFilter} onValueChange={setOfficeFilter}>
+                  <SelectTrigger className="w-[calc(50vw-2rem)] sm:w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {OFFICE_FILTERS.map((of_) => (
+                      <SelectItem key={of_.value} value={of_.value}>
+                        {of_.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             {isAdmin && (
               <div className="flex items-center gap-2">
@@ -488,15 +490,15 @@ export default function UsersPage() {
               </p>
             </div>
           ) : (
-            <div className="rounded-lg border">
+            <div className="rounded-lg border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Role</TableHead>
-                    <TableHead>Office</TableHead>
-                    <TableHead className="text-right">Quotes</TableHead>
-                    <TableHead className="text-right">Total Sales</TableHead>
+                    <TableHead className="hidden sm:table-cell">Office</TableHead>
+                    <TableHead className="hidden sm:table-cell text-right">Quotes</TableHead>
+                    <TableHead className="hidden md:table-cell text-right">Total Sales</TableHead>
                     <TableHead className="w-20" />
                   </TableRow>
                 </TableHeader>
@@ -525,17 +527,17 @@ export default function UsersPage() {
                             {ROLE_LABELS[user.role]}
                           </Badge>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden sm:table-cell">
                           {user.office ? (
                             <Badge variant="outline">{user.office}</Badge>
                           ) : (
                             <span className="text-muted-foreground text-xs">---</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="hidden sm:table-cell text-right">
                           {user.quote_count || <span className="text-muted-foreground text-xs">0</span>}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="hidden md:table-cell text-right">
                           {user.quote_total > 0 ? formatCurrency(user.quote_total) : <span className="text-muted-foreground text-xs">$0</span>}
                         </TableCell>
                         <TableCell>
