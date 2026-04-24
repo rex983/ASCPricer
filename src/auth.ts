@@ -3,9 +3,18 @@ import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { UserRole, Office } from "@/types/auth";
+import { timingSafeEqual } from "crypto";
 
 // Dev bypass ONLY when NODE_ENV is literally "development" — never via env flag
 const isDev = process.env.NODE_ENV === "development";
+
+const ADMIN_EMAIL = "rex@bigbuildingsdirect.com";
+
+/** Timing-safe string comparison to prevent timing attacks on password checks. */
+function safeCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
 
 // Only include Google provider if credentials are configured
 const providers = [];
@@ -25,6 +34,22 @@ if (process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET) {
   );
 }
 
+// In-memory rate limiter for credential login attempts
+const loginAttempts = new Map<string, { count: number; resetAt: number }>();
+const MAX_ATTEMPTS = 5;
+const WINDOW_MS = 60_000; // 1 minute
+
+function checkRateLimit(key: string): boolean {
+  const now = Date.now();
+  const entry = loginAttempts.get(key);
+  if (!entry || now > entry.resetAt) {
+    loginAttempts.set(key, { count: 1, resetAt: now + WINDOW_MS });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= MAX_ATTEMPTS;
+}
+
 providers.push(
   Credentials({
     id: "credentials",
@@ -38,13 +63,35 @@ providers.push(
       const password = credentials?.password as string;
       if (!email || !password) return null;
 
+      // Rate limit by email
+      if (!checkRateLimit(email.toLowerCase())) {
+        console.warn(`Rate limited login attempt for ${email}`);
+        return null;
+      }
+
       // Admin login — requires ADMIN_PASSWORD env var (min 8 chars)
       const adminPw = (process.env.ADMIN_PASSWORD || "").trim();
       if (
-        email === "rex@bigbuildingsdirect.com" &&
+        email === ADMIN_EMAIL &&
         adminPw.length >= 8 &&
-        password === adminPw
+        safeCompare(password, adminPw)
       ) {
+        // Resolve the real profile UUID from the database
+        try {
+          const supabase = createAdminClient();
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("id, full_name")
+            .eq("email", ADMIN_EMAIL)
+            .single();
+
+          if (profile) {
+            return { id: profile.id, email, name: profile.full_name || "Rex", image: null };
+          }
+        } catch {
+          // Fall through — profile lookup failed
+        }
+        // Fallback if profile not found (shouldn't happen, but don't lock out admin)
         return { id: "admin-001", email, name: "Rex", image: null };
       }
 
@@ -58,26 +105,8 @@ providers.push(
         };
       }
 
-      // DB lookup
-      try {
-        const supabase = createAdminClient();
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id, email, full_name, role")
-          .eq("email", email)
-          .single();
-
-        if (!profile) return null;
-
-        return {
-          id: profile.id,
-          email: profile.email,
-          name: profile.full_name || null,
-          image: null,
-        };
-      } catch {
-        return null;
-      }
+      // No other credential logins allowed — all employees must use Google OAuth
+      return null;
     },
   })
 );
@@ -123,22 +152,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return true;
     },
     async jwt({ token, user }) {
-      if (user?.email) {
-        // Hardcoded admin account
-        if (user.email === "rex@bigbuildingsdirect.com" && user.id === "admin-001") {
-          token.role = "admin" as UserRole;
-          token.profileId = "admin-001";
-          return token;
-        }
+      const email = user?.email || (token.email as string);
 
+      // On initial sign-in, populate token from DB
+      if (user?.email) {
         // Dev user gets admin only in development
         if (isDev && user.id === "dev-user-001") {
           token.role = "admin" as UserRole;
           token.profileId = "dev-user-001";
+          token.roleRefreshedAt = Date.now();
           return token;
         }
 
-        // DB user — look up actual role
+        // All users (including admin) — look up actual role from DB
         try {
           const supabase = createAdminClient();
           const { data: profile } = await supabase
@@ -152,13 +178,38 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             token.profileId = profile.id;
             if (profile.office) token.office = profile.office as Office;
           } else {
-            // No profile found — default to most restrictive role
             token.role = "sales_rep" as UserRole;
           }
         } catch {
           token.role = "sales_rep" as UserRole;
         }
+        token.roleRefreshedAt = Date.now();
+        return token;
       }
+
+      // On subsequent requests, refresh role from DB every 5 minutes
+      const lastRefresh = (token.roleRefreshedAt as number) || 0;
+      const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+      if (email && Date.now() - lastRefresh > REFRESH_INTERVAL) {
+        try {
+          const supabase = createAdminClient();
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("id, role, office")
+            .eq("email", email)
+            .single();
+
+          if (profile) {
+            token.role = profile.role as UserRole;
+            token.profileId = profile.id;
+            token.office = profile.office ? (profile.office as Office) : undefined;
+          }
+        } catch {
+          // Keep existing token values on refresh failure
+        }
+        token.roleRefreshedAt = Date.now();
+      }
+
       return token;
     },
     async session({ session, token }) {

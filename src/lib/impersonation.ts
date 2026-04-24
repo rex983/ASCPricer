@@ -1,10 +1,40 @@
 import { cookies } from "next/headers";
 import { auth } from "@/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createHmac } from "crypto";
 import type { UserRole, Office } from "@/types/auth";
 
 export const IMPERSONATION_COOKIE = "view_as_profile_id";
 export const IMPERSONATION_MAX_AGE = 8 * 60 * 60;
+
+/**
+ * Sign an impersonation cookie value so it's bound to the real user's session.
+ * Format: "targetId.hmac" where hmac = HMAC(realProfileId:targetId, secret)
+ */
+function getHmacSecret(): string {
+  return process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "fallback-dev-secret";
+}
+
+export function signCookieValue(realProfileId: string, targetId: string): string {
+  const mac = createHmac("sha256", getHmacSecret())
+    .update(`${realProfileId}:${targetId}`)
+    .digest("hex")
+    .slice(0, 16);
+  return `${targetId}.${mac}`;
+}
+
+export function verifyCookieValue(cookieValue: string, realProfileId: string): string | null {
+  const dotIdx = cookieValue.indexOf(".");
+  if (dotIdx === -1) return null; // unsigned legacy cookie — reject
+  const targetId = cookieValue.slice(0, dotIdx);
+  const providedMac = cookieValue.slice(dotIdx + 1);
+  const expectedMac = createHmac("sha256", getHmacSecret())
+    .update(`${realProfileId}:${targetId}`)
+    .digest("hex")
+    .slice(0, 16);
+  if (providedMac !== expectedMac) return null;
+  return targetId;
+}
 
 export interface EffectiveUser {
   role: UserRole;
@@ -53,7 +83,8 @@ export async function getImpersonationContext(): Promise<ImpersonationContext | 
   const canImpersonate = real.role === "admin" || real.role === "manager";
 
   const jar = await cookies();
-  const targetId = jar.get(IMPERSONATION_COOKIE)?.value;
+  const rawCookie = jar.get(IMPERSONATION_COOKIE)?.value;
+  const targetId = rawCookie ? verifyCookieValue(rawCookie, real.profileId) : null;
 
   if (!targetId || !canImpersonate) {
     return { real, effective: real, isImpersonating: false, target: null, canImpersonate };

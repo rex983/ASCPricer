@@ -57,7 +57,8 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("sales-reps PATCH error:", error);
+    return NextResponse.json({ error: "Database operation failed" }, { status: 500 });
   }
 
   await logAudit({
@@ -88,7 +89,8 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
     .eq("id", id);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("sales-reps DELETE error:", error);
+    return NextResponse.json({ error: "Database operation failed" }, { status: 500 });
   }
 
   await logAudit({

@@ -18,7 +18,8 @@ export async function GET() {
     .order("name");
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("sales-reps GET error:", error);
+    return NextResponse.json({ error: "Database operation failed" }, { status: 500 });
   }
 
   // Fetch quote counts per rep (via created_by matching profile_id)
@@ -99,7 +100,8 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("sales-reps POST error:", error);
+    return NextResponse.json({ error: "Database operation failed" }, { status: 500 });
   }
 
   await logAudit({

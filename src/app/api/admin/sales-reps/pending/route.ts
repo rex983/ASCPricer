@@ -30,7 +30,8 @@ export async function GET() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("sales-reps/pending GET error:", error);
+    return NextResponse.json({ error: "Database operation failed" }, { status: 500 });
   }
 
   const pending = (profiles ?? [])

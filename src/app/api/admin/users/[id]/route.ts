@@ -121,7 +121,8 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("users PATCH error:", error);
+      return NextResponse.json({ error: "Database operation failed" }, { status: 500 });
     }
     profile = data;
   }
@@ -220,7 +221,8 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
   const { error } = await supabase.from("profiles").delete().eq("id", id);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("users DELETE error:", error);
+    return NextResponse.json({ error: "Database operation failed" }, { status: 500 });
   }
 
   await logAudit({

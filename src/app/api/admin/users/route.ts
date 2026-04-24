@@ -32,7 +32,8 @@ export async function GET(req: NextRequest) {
   const { data, error, count } = await query;
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("users GET error:", error);
+    return NextResponse.json({ error: "Database operation failed" }, { status: 500 });
   }
 
   const profiles = data ?? [];
@@ -159,7 +160,8 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("users POST error:", error);
+    return NextResponse.json({ error: "Database operation failed" }, { status: 500 });
   }
 
   await logAudit({

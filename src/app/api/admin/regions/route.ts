@@ -26,7 +26,8 @@ export async function GET() {
     .order("name");
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("regions GET error:", error);
+    return NextResponse.json({ error: "Database operation failed" }, { status: 500 });
   }
 
   // Fetch current pricing data status per region+type
@@ -118,7 +119,8 @@ export async function POST(req: NextRequest) {
     if (error.code === "23505") {
       return NextResponse.json({ error: "A region with this combination already exists" }, { status: 409 });
     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("regions POST error:", error);
+    return NextResponse.json({ error: "Database operation failed" }, { status: 500 });
   }
 
   await logAudit({

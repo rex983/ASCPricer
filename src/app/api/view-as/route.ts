@@ -7,6 +7,8 @@ import {
   IMPERSONATION_COOKIE,
   IMPERSONATION_MAX_AGE,
   getImpersonationContext,
+  signCookieValue,
+  verifyCookieValue,
 } from "@/lib/impersonation";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -80,7 +82,7 @@ export async function POST(req: NextRequest) {
   }
 
   const jar = await cookies();
-  jar.set(IMPERSONATION_COOKIE, target.id, {
+  jar.set(IMPERSONATION_COOKIE, signCookieValue(realId, target.id), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
@@ -121,17 +123,20 @@ export async function DELETE() {
   }
 
   const jar = await cookies();
-  const prev = jar.get(IMPERSONATION_COOKIE)?.value;
+  const rawCookie = jar.get(IMPERSONATION_COOKIE)?.value;
   jar.delete(IMPERSONATION_COOKIE);
 
-  if (prev) {
-    await logAudit({
-      userId: session.user.profileId,
-      userEmail: session.user.email,
-      action: "view_as_stop",
-      resourceType: "profile",
-      resourceId: prev,
-    });
+  if (rawCookie) {
+    const targetId = verifyCookieValue(rawCookie, session.user.profileId);
+    if (targetId) {
+      await logAudit({
+        userId: session.user.profileId,
+        userEmail: session.user.email,
+        action: "view_as_stop",
+        resourceType: "profile",
+        resourceId: targetId,
+      });
+    }
   }
 
   return NextResponse.json({ ok: true });
