@@ -41,7 +41,7 @@ export async function GET(
     if (customer.created_by !== profileId) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
-  } else if (role === "manager" && office) {
+  } else if (role === "senior_manager" && office) {
     if (customer.office && customer.office !== office) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
@@ -83,7 +83,7 @@ export async function DELETE(
     if (customer.created_by !== profileId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-  } else if (role === "manager" && office) {
+  } else if (role === "senior_manager" && office) {
     if (customer.office && customer.office !== office) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -138,7 +138,7 @@ export async function PATCH(
     if (existing.created_by !== profileId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-  } else if (role === "manager" && office) {
+  } else if (role === "senior_manager" && office) {
     if (existing.office && existing.office !== office) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

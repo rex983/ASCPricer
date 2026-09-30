@@ -34,7 +34,7 @@ export async function GET(
     if (quote.created_by !== profileId) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
-  } else if (role === "manager" && office) {
+  } else if (role === "senior_manager" && office) {
     if (quote.office && quote.office !== office) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }

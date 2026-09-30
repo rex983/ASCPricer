@@ -12,7 +12,7 @@ import {
 } from "@/lib/impersonation";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const IMPERSONATABLE_ROLES = ["sales_rep", "bst", "manager"];
+const IMPERSONATABLE_ROLES = ["sales_rep", "bst", "senior_manager"];
 
 /** GET /api/view-as — current impersonation status for the UI banner. */
 export async function GET() {
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
   const { role: realRole, office: realOffice, profileId: realId, email: realEmail } =
     session.user;
 
-  if (realRole !== "admin" && realRole !== "manager") {
+  if (realRole !== "admin" && realRole !== "senior_manager") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (realRole === "manager") {
+  if (realRole === "senior_manager") {
     if (!realOffice || target.office !== realOffice) {
       return NextResponse.json(
         { error: "You can only view reps in your own office" },

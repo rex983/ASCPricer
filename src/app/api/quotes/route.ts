@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
   // Role-based filtering
   if (role === "sales_rep" || role === "bst") {
     query = query.eq("created_by", profileId);
-  } else if (role === "manager" && office) {
+  } else if (role === "senior_manager" && office) {
     query = query.eq("office", office);
   }
   // admin sees all

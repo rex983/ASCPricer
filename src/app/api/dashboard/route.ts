@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
 
   if (role === "sales_rep" || role === "bst") {
     customerQuery = customerQuery.eq("created_by", profileId);
-  } else if (role === "manager" && office) {
+  } else if (role === "senior_manager" && office) {
     customerQuery = customerQuery.eq("office", office);
   }
 
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
 
   if (role === "sales_rep" || role === "bst") {
     quoteQuery = quoteQuery.eq("created_by", profileId);
-  } else if (role === "manager" && office) {
+  } else if (role === "senior_manager" && office) {
     quoteQuery = quoteQuery.eq("office", office);
   }
 

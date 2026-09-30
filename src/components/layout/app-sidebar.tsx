@@ -39,7 +39,7 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const role = session?.user?.role;
-  const isAdminOrManager = role === "admin" || role === "manager";
+  const isAdminOrManager = role === "admin" || role === "senior_manager";
   const [impersonating, setImpersonating] = useState(false);
 
   useEffect(() => {

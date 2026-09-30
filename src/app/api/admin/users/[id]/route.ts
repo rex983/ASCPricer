@@ -5,8 +5,8 @@ import { logAudit } from "@/lib/audit";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-const ALLOWED_ROLES = ["admin", "manager"];
-const VALID_USER_ROLES = ["admin", "manager", "sales_rep", "bst"];
+const ALLOWED_ROLES = ["admin", "senior_manager"];
+const VALID_USER_ROLES = ["admin", "senior_manager", "sales_rep", "bst"];
 const VALID_OFFICES = ["Harbor", "Marion"];
 
 /** PATCH /api/admin/users/[id] — update profile */
@@ -61,7 +61,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   const supabase = createAdminClient();
 
   // Prevent managers from editing users outside their office
-  if (session.user.role === "manager" && session.user.office) {
+  if (session.user.role === "senior_manager" && session.user.office) {
     const { data: target } = await supabase
       .from("profiles")
       .select("office")

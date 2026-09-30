@@ -29,5 +29,5 @@ export const STATUS_COLORS: Record<string, "default" | "secondary" | "destructiv
 };
 
 export function canDeleteRecord(role?: string): boolean {
-  return role === "admin" || role === "manager" || role === "sales_rep";
+  return role === "admin" || role === "senior_manager" || role === "sales_rep";
 }

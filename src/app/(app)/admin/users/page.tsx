@@ -62,21 +62,21 @@ interface UserProfile {
 
 const ROLE_LABELS: Record<UserRole, string> = {
   admin: "Admin",
-  manager: "Manager",
+  senior_manager: "Senior Manager",
   sales_rep: "Sales Rep",
   bst: "BST",
 };
 
 const ROLE_COLORS: Record<UserRole, "default" | "secondary" | "destructive" | "outline"> = {
   admin: "destructive",
-  manager: "default",
+  senior_manager: "default",
   sales_rep: "secondary",
   bst: "outline",
 };
 
 const ROLE_ICONS: Record<UserRole, typeof Shield> = {
   admin: ShieldAlert,
-  manager: ShieldCheck,
+  senior_manager: ShieldCheck,
   sales_rep: Shield,
   bst: Shield,
 };
@@ -84,7 +84,7 @@ const ROLE_ICONS: Record<UserRole, typeof Shield> = {
 const ROLE_FILTERS = [
   { value: "all", label: "All Roles" },
   { value: "admin", label: "Admins" },
-  { value: "manager", label: "Managers" },
+  { value: "senior_manager", label: "Senior Managers" },
   { value: "sales_rep", label: "Sales Reps" },
   { value: "bst", label: "BST" },
 ] as const;
@@ -108,7 +108,7 @@ export default function UsersPage() {
   const router = useRouter();
   const role = session?.user?.role;
   const isAdmin = role === "admin";
-  const isAdminOrManager = role === "admin" || role === "manager";
+  const isAdminOrManager = role === "admin" || role === "senior_manager";
   const canImpersonate = isAdminOrManager;
 
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -597,7 +597,7 @@ export default function UsersPage() {
           <DialogHeader>
             <DialogTitle>Import Users from CSV</DialogTitle>
             <DialogDescription>
-              Upload a CSV file with columns: <strong>name</strong>, <strong>email</strong> (required), and optionally <strong>role</strong> (admin, manager, sales_rep, bst) and <strong>office</strong> (Harbor, Marion). Existing emails will be skipped.
+              Upload a CSV file with columns: <strong>name</strong>, <strong>email</strong> (required), and optionally <strong>role</strong> (admin, senior_manager, sales_rep, bst) and <strong>office</strong> (Harbor, Marion). Existing emails will be skipped.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -681,7 +681,7 @@ export default function UsersPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="manager">Manager</SelectItem>
+                      <SelectItem value="senior_manager">Senior Manager</SelectItem>
                       <SelectItem value="sales_rep">Sales Rep</SelectItem>
                       <SelectItem value="bst">BST</SelectItem>
                     </SelectContent>

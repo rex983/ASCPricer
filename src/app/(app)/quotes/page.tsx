@@ -29,8 +29,8 @@ export default function QuotesPage() {
   const [search, setSearch] = useState("");
 
   const role = session?.user?.role;
-  const showOffice = role === "admin" || role === "manager";
-  const canDelete = role === "admin" || role === "manager";
+  const showOffice = role === "admin" || role === "senior_manager";
+  const canDelete = role === "admin" || role === "senior_manager";
 
   const fetchQuotes = useCallback(() => {
     setLoading(true);

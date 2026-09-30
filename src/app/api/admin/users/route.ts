@@ -3,8 +3,8 @@ import { auth } from "@/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
 
-const ALLOWED_ROLES = ["admin", "manager"];
-const VALID_USER_ROLES = ["admin", "manager", "sales_rep", "bst"];
+const ALLOWED_ROLES = ["admin", "senior_manager"];
+const VALID_USER_ROLES = ["admin", "senior_manager", "sales_rep", "bst"];
 const VALID_OFFICES = ["Harbor", "Marion"];
 /** GET /api/admin/users — list all profiles + stats */
 export async function GET(req: NextRequest) {
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     .range(offset, offset + limit - 1);
 
   // Managers can only see their own office's users
-  if (session.user.role === "manager" && session.user.office) {
+  if (session.user.role === "senior_manager" && session.user.office) {
     query = query.eq("office", session.user.office);
   }
 

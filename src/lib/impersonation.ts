@@ -61,7 +61,7 @@ export interface ImpersonationContext {
 }
 
 // Only these roles can be impersonation targets — never admin/manager.
-const IMPERSONATABLE_ROLES: UserRole[] = ["sales_rep", "bst", "manager"];
+const IMPERSONATABLE_ROLES: UserRole[] = ["sales_rep", "bst", "senior_manager"];
 
 /**
  * Resolve the real session user and the effective user (after any valid
@@ -80,7 +80,7 @@ export async function getImpersonationContext(): Promise<ImpersonationContext | 
     name: session.user.name ?? null,
   };
 
-  const canImpersonate = real.role === "admin" || real.role === "manager";
+  const canImpersonate = real.role === "admin" || real.role === "senior_manager";
 
   const jar = await cookies();
   const rawCookie = jar.get(IMPERSONATION_COOKIE)?.value;

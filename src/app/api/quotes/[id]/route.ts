@@ -36,7 +36,7 @@ export async function GET(
     if (data.created_by !== profileId) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
-  } else if (role === "manager" && office) {
+  } else if (role === "senior_manager" && office) {
     if (data.office && data.office !== office) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
@@ -69,7 +69,7 @@ export async function DELETE(
   const { id } = await params;
 
   // Only admins and managers may delete quotes.
-  if (role !== "admin" && role !== "manager") {
+  if (role !== "admin" && role !== "senior_manager") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -87,7 +87,7 @@ export async function DELETE(
   }
 
   // Managers are still limited to their own office.
-  if (role === "manager" && office) {
+  if (role === "senior_manager" && office) {
     if (quote.office && quote.office !== office) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -136,7 +136,7 @@ export async function PATCH(
     if (existing.created_by !== profileId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-  } else if (role === "manager" && office) {
+  } else if (role === "senior_manager" && office) {
     if (existing.office && existing.office !== office) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
