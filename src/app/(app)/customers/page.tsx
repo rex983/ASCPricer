@@ -305,7 +305,6 @@ function NewCustomerForm({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Harbor">Harbor</SelectItem>
-                <SelectItem value="Marion">Marion</SelectItem>
               </SelectContent>
             </Select>
           ) : (

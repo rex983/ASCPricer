@@ -92,7 +92,6 @@ const ROLE_FILTERS = [
 const OFFICE_FILTERS = [
   { value: "all", label: "All Offices" },
   { value: "Harbor", label: "Harbor" },
-  { value: "Marion", label: "Marion" },
   { value: "none", label: "No Office" },
 ] as const;
 
@@ -597,7 +596,7 @@ export default function UsersPage() {
           <DialogHeader>
             <DialogTitle>Import Users from CSV</DialogTitle>
             <DialogDescription>
-              Upload a CSV file with columns: <strong>name</strong>, <strong>email</strong> (required), and optionally <strong>role</strong> (admin, senior_manager, sales_rep, bst) and <strong>office</strong> (Harbor, Marion). Existing emails will be skipped.
+              Upload a CSV file with columns: <strong>name</strong>, <strong>email</strong> (required), and optionally <strong>role</strong> (admin, senior_manager, sales_rep, bst) and <strong>office</strong> (Harbor). Existing emails will be skipped.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -700,7 +699,6 @@ export default function UsersPage() {
                   <SelectContent>
                     <SelectItem value="none">No Office</SelectItem>
                     <SelectItem value="Harbor">Harbor</SelectItem>
-                    <SelectItem value="Marion">Marion</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

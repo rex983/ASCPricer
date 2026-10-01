@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Validate office if provided
-  const VALID_OFFICES = ["Harbor", "Marion"];
+  const VALID_OFFICES = ["Harbor"];
   if (office && !VALID_OFFICES.includes(office)) {
     return NextResponse.json({ error: "Invalid office" }, { status: 400 });
   }

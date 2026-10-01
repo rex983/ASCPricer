@@ -1,5 +1,5 @@
 -- Add office column to profiles (shared table)
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS office TEXT CHECK (office IN ('Harbor', 'Marion'));
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS office TEXT CHECK (office IN ('Harbor', 'BST', 'RnD'));
 
 -- Create customers table
 CREATE TABLE IF NOT EXISTS asc_customers (
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS asc_customers (
   state TEXT,
   zip TEXT,
   notes TEXT,
-  office TEXT NOT NULL CHECK (office IN ('Harbor', 'Marion')),
+  office TEXT NOT NULL CHECK (office IN ('Harbor', 'BST', 'RnD')),
   created_by UUID REFERENCES profiles(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -26,7 +26,7 @@ CREATE TRIGGER set_asc_customers_updated_at
 
 -- Add customer_id and office to quotes
 ALTER TABLE asc_quotes ADD COLUMN IF NOT EXISTS customer_id UUID REFERENCES asc_customers(id);
-ALTER TABLE asc_quotes ADD COLUMN IF NOT EXISTS office TEXT CHECK (office IN ('Harbor', 'Marion'));
+ALTER TABLE asc_quotes ADD COLUMN IF NOT EXISTS office TEXT CHECK (office IN ('Harbor', 'BST', 'RnD'));
 
 -- Enable RLS on customers
 ALTER TABLE asc_customers ENABLE ROW LEVEL SECURITY;

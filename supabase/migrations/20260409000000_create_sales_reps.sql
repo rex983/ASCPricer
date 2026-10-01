@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS asc_sales_reps (
   name TEXT NOT NULL,
   email TEXT NOT NULL,
   phone TEXT,
-  office TEXT NOT NULL CHECK (office IN ('Harbor', 'Marion')),
+  office TEXT NOT NULL CHECK (office IN ('Harbor', 'BST', 'RnD')),
   territory TEXT,
   commission_rate NUMERIC(5,2) DEFAULT 0,
   is_active BOOLEAN NOT NULL DEFAULT true,

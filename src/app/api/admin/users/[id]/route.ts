@@ -7,7 +7,7 @@ type Ctx = { params: Promise<{ id: string }> };
 
 const ALLOWED_ROLES = ["admin", "senior_manager"];
 const VALID_USER_ROLES = ["admin", "senior_manager", "sales_rep", "bst"];
-const VALID_OFFICES = ["Harbor", "Marion"];
+const VALID_OFFICES = ["Harbor"];
 
 /** PATCH /api/admin/users/[id] — update profile */
 export async function PATCH(req: NextRequest, ctx: Ctx) {
@@ -49,7 +49,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
   if (body.office !== undefined) {
     if (body.office && !VALID_OFFICES.includes(body.office)) {
-      return NextResponse.json({ error: "Office must be Harbor or Marion" }, { status: 400 });
+      return NextResponse.json({ error: "Office must be Harbor" }, { status: 400 });
     }
     updates.office = body.office || null;
   }
