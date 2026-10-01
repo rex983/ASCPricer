@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Validate office if provided
-  const VALID_OFFICES = ["Harbor"];
+  const VALID_OFFICES = ["Sales"];
   if (office && !VALID_OFFICES.includes(office)) {
     return NextResponse.json({ error: "Invalid office" }, { status: 400 });
   }
@@ -225,7 +225,7 @@ export async function POST(req: NextRequest) {
         city: customerCity,
         state: customerState,
         zip: customerZip,
-        office: quoteOffice || "Harbor",
+        office: quoteOffice || "Sales",
         created_by: validUuid,
       })
       .select("id")

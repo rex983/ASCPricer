@@ -91,7 +91,7 @@ const ROLE_FILTERS = [
 
 const OFFICE_FILTERS = [
   { value: "all", label: "All Offices" },
-  { value: "Harbor", label: "Harbor" },
+  { value: "Sales", label: "Sales" },
   { value: "none", label: "No Office" },
 ] as const;
 
@@ -206,7 +206,7 @@ export default function UsersPage() {
   };
 
   const downloadTemplate = () => {
-    const csv = "name,email,role,office\nJohn Doe,john@bigbuildingsdirect.com,sales_rep,Harbor\n";
+    const csv = "name,email,role,office\nJohn Doe,john@bigbuildingsdirect.com,sales_rep,Sales\n";
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -596,7 +596,7 @@ export default function UsersPage() {
           <DialogHeader>
             <DialogTitle>Import Users from CSV</DialogTitle>
             <DialogDescription>
-              Upload a CSV file with columns: <strong>name</strong>, <strong>email</strong> (required), and optionally <strong>role</strong> (admin, senior_manager, sales_rep, bst) and <strong>office</strong> (Harbor). Existing emails will be skipped.
+              Upload a CSV file with columns: <strong>name</strong>, <strong>email</strong> (required), and optionally <strong>role</strong> (admin, senior_manager, sales_rep, bst) and <strong>office</strong> (Sales). Existing emails will be skipped.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -698,7 +698,7 @@ export default function UsersPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">No Office</SelectItem>
-                    <SelectItem value="Harbor">Harbor</SelectItem>
+                    <SelectItem value="Sales">Sales</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

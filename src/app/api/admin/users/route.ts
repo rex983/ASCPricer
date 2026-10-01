@@ -5,7 +5,7 @@ import { logAudit } from "@/lib/audit";
 
 const ALLOWED_ROLES = ["admin", "senior_manager"];
 const VALID_USER_ROLES = ["admin", "senior_manager", "sales_rep", "bst"];
-const VALID_OFFICES = ["Harbor"];
+const VALID_OFFICES = ["Sales"];
 /** GET /api/admin/users — list all profiles + stats */
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
     );
   }
   if (office && !VALID_OFFICES.includes(office)) {
-    return NextResponse.json({ error: "Office must be Harbor" }, { status: 400 });
+    return NextResponse.json({ error: "Office must be Sales" }, { status: 400 });
   }
 
   const supabase = createAdminClient();

@@ -211,7 +211,7 @@ function NewCustomerForm({
     city: "",
     state: "",
     zip: "",
-    office: defaultOffice || "Harbor",
+    office: defaultOffice || "Sales",
   });
 
   const set = (field: string, value: string) =>
@@ -304,7 +304,7 @@ function NewCustomerForm({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Harbor">Harbor</SelectItem>
+                <SelectItem value="Sales">Sales</SelectItem>
               </SelectContent>
             </Select>
           ) : (

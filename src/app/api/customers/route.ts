@@ -74,9 +74,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (office !== "Harbor") {
+  if (office !== "Sales") {
     return NextResponse.json(
-      { error: "office must be Harbor" },
+      { error: "office must be Sales" },
       { status: 400 }
     );
   }

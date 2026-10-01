@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
 
 const VALID_ROLES = ["admin", "senior_manager", "sales_rep", "bst"];
-const VALID_OFFICES = ["Harbor"];
+const VALID_OFFICES = ["Sales"];
 const ALLOWED_DOMAIN = "bigbuildingsdirect.com";
 const MAX_FILE_BYTES = 1_000_000; // 1 MB
 const MAX_ROWS = 1000;
