@@ -60,15 +60,20 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
   const supabase = createAdminClient();
 
-  // Prevent managers from editing users outside their office
-  if (session.user.role === "senior_manager" && session.user.office) {
+  // Prevent managers from editing users outside their office, and from
+  // editing admins at all (e.g. re-pointing an admin profile's email at an
+  // account they control would hand them the admin role in every BBD app).
+  if (session.user.role === "senior_manager") {
     const { data: target } = await supabase
       .from("profiles")
-      .select("office")
+      .select("office, role")
       .eq("id", id)
       .single();
 
-    if (target && target.office !== session.user.office) {
+    if (target?.role === "admin") {
+      return NextResponse.json({ error: "Only admins can edit admin accounts" }, { status: 403 });
+    }
+    if (session.user.office && target && target.office !== session.user.office) {
       return NextResponse.json({ error: "Cannot edit users from another office" }, { status: 403 });
     }
   }
