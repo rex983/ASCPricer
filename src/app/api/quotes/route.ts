@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { calculatePrice } from "@/lib/pricing/engine";
+import {
+  applyInsulationRates,
+  getInsulationRates,
+  getPricingRow,
+} from "@/lib/pricing/data";
 import { getImpersonationContext } from "@/lib/impersonation";
 import type { BuildingConfig, PricingMatrices } from "@/types/pricing";
 
@@ -128,13 +133,14 @@ export async function POST(req: NextRequest) {
 
   const supabase = createAdminClient();
 
-  // Fetch matrices to server-validate pricing
-  const { data: pricingRow } = await supabase
-    .from("asc_pricing_data")
-    .select("id, matrices")
-    .eq("region_id", regionId)
-    .eq("is_current", true)
-    .single();
+  // Fetch matrices to server-validate pricing (same cached read + rate
+  // overlay the calculator uses, so client and server prices agree)
+  let pricingRow: Awaited<ReturnType<typeof getPricingRow>> = null;
+  try {
+    pricingRow = await getPricingRow(regionId, null);
+  } catch {
+    pricingRow = null;
+  }
 
   if (!pricingRow) {
     return NextResponse.json(
@@ -144,7 +150,10 @@ export async function POST(req: NextRequest) {
   }
 
   // Server-side recalculation
-  const matrices = pricingRow.matrices as PricingMatrices;
+  const matrices = applyInsulationRates(
+    pricingRow.matrices as PricingMatrices,
+    await getInsulationRates()
+  );
   let pricing: ReturnType<typeof calculatePrice>;
   try {
     pricing = calculatePrice(config, matrices);

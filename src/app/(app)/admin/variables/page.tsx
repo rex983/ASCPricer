@@ -45,7 +45,12 @@ const SECTIONS: {
   },
   {
     title: "Insulation & Wainscot",
-    keys: ["insulation_types", "insulation_scopes", "wainscot_options"],
+    keys: [
+      "insulation_types",
+      "insulation_scopes",
+      "insulation_rates",
+      "wainscot_options",
+    ],
   },
   {
     title: "Engineering",
@@ -75,6 +80,7 @@ const FRIENDLY_LABELS: Record<string, string> = {
   sheet_metal_options: "Sheet Metal Options (Widespan)",
   insulation_types: "Insulation Types",
   insulation_scopes: "Insulation Scopes",
+  insulation_rates: "Insulation Rates ($/sq ft; standard buildings, widespan fallback)",
   wainscot_options: "Wainscot Options",
   standard_snow_load_options: "Snow Load Options (Standard)",
   widespan_snow_load_options: "Snow Load Options (Widespan)",
