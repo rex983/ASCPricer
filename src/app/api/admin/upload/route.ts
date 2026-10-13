@@ -3,6 +3,12 @@ import { auth } from "@/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parseSpreadsheet } from "@/lib/excel/parser";
 import { logAudit } from "@/lib/audit";
+import {
+  APP_CONFIG_TAG,
+  PRICING_DATA_TAG,
+  getInsulationRates,
+  invalidatePricingCache,
+} from "@/lib/pricing/data";
 
 import type { PricingMatrices, SpreadsheetType } from "@/types/pricing";
 
@@ -168,7 +174,8 @@ export async function POST(req: NextRequest) {
   try {
     // Parse the spreadsheet
     const buffer = await file.arrayBuffer();
-    const result = parseSpreadsheet(new Uint8Array(buffer), file.name);
+    const insulationRates = await getInsulationRates();
+    const result = parseSpreadsheet(new Uint8Array(buffer), file.name, insulationRates);
 
     // ── Mismatch checks ──
     // 1. Type mismatch: detected type vs region's expected type
@@ -296,6 +303,8 @@ export async function POST(req: NextRequest) {
 
     // Auto-detect config changes from parsed matrices and update asc_app_config
     await syncConfigFromMatrices(supabase, result.matrices, result.detection.type, regionId);
+
+    invalidatePricingCache(PRICING_DATA_TAG, APP_CONFIG_TAG);
 
     // Log successful upload to audit trail
     await logAudit({

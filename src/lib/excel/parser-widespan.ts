@@ -1,5 +1,6 @@
 import type { WorkBook } from "xlsx";
 import type { WidespanMatrices } from "@/types/pricing";
+import { FIBERGLASS_RATE, THERMAL_RATE } from "@/lib/pricing/constants";
 import { readWidespanBasePrice } from "./sheet-readers/widespan-base";
 import { readWidespanLegs } from "./sheet-readers/widespan-legs";
 import { readWidespanSides } from "./sheet-readers/widespan-sides";
@@ -41,7 +42,13 @@ function tryGetSheet(workbook: WorkBook, name: string) {
 /**
  * Parse a widespan spreadsheet (14 sheets, width 32-60) into pricing matrices.
  */
-export function parseWidespanWorkbook(workbook: WorkBook): WidespanMatrices {
+export function parseWidespanWorkbook(
+  workbook: WorkBook,
+  insulation: { fiberglass: number; thermal: number } = {
+    fiberglass: FIBERGLASS_RATE,
+    thermal: THERMAL_RATE,
+  }
+): WidespanMatrices {
   // Core pricing sheets
   const basePrice = readWidespanBasePrice(getSheet(workbook, "Base Price"));
   const legs = readWidespanLegs(getSheet(workbook, "Leg Height"));
@@ -62,7 +69,8 @@ export function parseWidespanWorkbook(workbook: WorkBook): WidespanMatrices {
   // Insulation & wainscot
   const { fiberglassRate, thermalRate, wainscotSides, wainscotEnds } =
     readWidespanInsulationWainscot(
-      getSheet(workbook, "Insulation - Wainscot")
+      getSheet(workbook, "Insulation - Wainscot"),
+      insulation
     );
 
   // Equipment & plans

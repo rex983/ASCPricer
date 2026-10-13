@@ -1,6 +1,7 @@
 import type { WorkBook } from "xlsx";
 import { utils as XLSXUtils } from "xlsx";
 import type { StandardMatrices } from "@/types/pricing";
+import { FIBERGLASS_RATE, THERMAL_RATE } from "@/lib/pricing/constants";
 import { readBasePrice } from "./sheet-readers/standard-base";
 import { readRoofStyle } from "./sheet-readers/standard-roof-style";
 import { readLegs } from "./sheet-readers/standard-legs";
@@ -57,7 +58,13 @@ function tryGetSheet(workbook: WorkBook, name: string) {
 /**
  * Parse a standard spreadsheet (21 sheets, width ≤ 30) into pricing matrices.
  */
-export function parseStandardWorkbook(workbook: WorkBook): StandardMatrices {
+export function parseStandardWorkbook(
+  workbook: WorkBook,
+  insulation: { fiberglass: number; thermal: number } = {
+    fiberglass: FIBERGLASS_RATE,
+    thermal: THERMAL_RATE,
+  }
+): StandardMatrices {
   // Core pricing sheets
   const basePrice = readBasePrice(getSheet(workbook, "Pricing - Base"));
   const roofStyle = readRoofStyle(getSheet(workbook, "Pricing - Roof Style"));
@@ -164,8 +171,9 @@ export function parseStandardWorkbook(workbook: WorkBook): StandardMatrices {
       rollUpSides,
     },
     insulation: {
-      fiberglassRate: 2.25,
-      thermalRate: 1.65,
+      // Standard spreadsheets carry no insulation rates; use the configured ones
+      fiberglassRate: insulation.fiberglass,
+      thermalRate: insulation.thermal,
     },
     anchors,
     laborEquipment,

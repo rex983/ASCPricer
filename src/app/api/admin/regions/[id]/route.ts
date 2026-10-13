@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
+import { APP_CONFIG_TAG, PRICING_DATA_TAG, REGIONS_TAG, invalidatePricingCache } from "@/lib/pricing/data";
 
 const VALID_STATES = new Set([
   "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN",
@@ -63,6 +64,8 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "Database operation failed" }, { status: 500 });
   }
 
+  invalidatePricingCache(REGIONS_TAG, PRICING_DATA_TAG);
+
   await logAudit({
     userId: session.user.profileId,
     userEmail: session.user.email,
@@ -107,6 +110,8 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
     console.error("regions DELETE error:", error);
     return NextResponse.json({ error: "Database operation failed" }, { status: 500 });
   }
+
+  invalidatePricingCache(REGIONS_TAG, PRICING_DATA_TAG, APP_CONFIG_TAG);
 
   await logAudit({
     userId: session.user.profileId,

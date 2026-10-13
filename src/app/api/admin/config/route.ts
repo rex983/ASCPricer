@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
+import {
+  APP_CONFIG_TAG,
+  INSULATION_RATES_KEY,
+  getAppConfig,
+  invalidatePricingCache,
+  parseInsulationRates,
+} from "@/lib/pricing/data";
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -10,46 +19,22 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
-  const regionId = searchParams.get("regionId");
-  const spreadsheetType = searchParams.get("spreadsheetType");
+  // Only well-formed scopes reach the cache key (anything else could never
+  // match a scoped row anyway, so the result is the global config).
+  const rawRegionId = searchParams.get("regionId");
+  const rawType = searchParams.get("spreadsheetType");
+  const regionId = rawRegionId && UUID_RE.test(rawRegionId) ? rawRegionId : null;
+  const spreadsheetType =
+    rawType === "standard" || rawType === "widespan" ? rawType : null;
 
-  const supabase = createAdminClient();
-
-  // 1. Always load global config (region_id IS NULL)
-  const { data: globalRows, error } = await supabase
-    .from("asc_app_config")
-    .select("key, value")
-    .is("region_id", null);
-
-  if (error) {
-    if (error.code === "42P01" || error.message?.includes("does not exist")) {
-      return NextResponse.json({});
-    }
+  try {
+    return NextResponse.json(await getAppConfig(regionId, spreadsheetType));
+  } catch {
     return NextResponse.json(
       { error: "Failed to load config" },
       { status: 500 }
     );
   }
-
-  const config: Record<string, unknown> = {};
-  for (const row of globalRows ?? []) {
-    config[row.key] = row.value;
-  }
-
-  // 2. If region + type provided, overlay scoped config (takes priority)
-  if (regionId && spreadsheetType) {
-    const { data: scopedRows } = await supabase
-      .from("asc_app_config")
-      .select("key, value")
-      .eq("region_id", regionId)
-      .eq("spreadsheet_type", spreadsheetType);
-
-    for (const row of scopedRows ?? []) {
-      config[row.key] = row.value;
-    }
-  }
-
-  return NextResponse.json(config);
 }
 
 export async function PUT(req: NextRequest) {
@@ -64,6 +49,13 @@ export async function PUT(req: NextRequest) {
   if (!key || value === undefined) {
     return NextResponse.json(
       { error: "Missing key or value" },
+      { status: 400 }
+    );
+  }
+
+  if (key === INSULATION_RATES_KEY && !parseInsulationRates(value)) {
+    return NextResponse.json(
+      { error: "insulation_rates needs positive numeric fiberglass and thermal rates" },
       { status: 400 }
     );
   }
@@ -87,6 +79,8 @@ export async function PUT(req: NextRequest) {
       { status: 500 }
     );
   }
+
+  invalidatePricingCache(APP_CONFIG_TAG);
 
   await logAudit({
     userId: session.user.profileId,

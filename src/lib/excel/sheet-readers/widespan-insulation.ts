@@ -1,6 +1,7 @@
 import type { WorkSheet } from "xlsx";
 import type { PricingLookup } from "@/types/pricing";
 import { sheetToArray, num, cleanHeader } from "./utils";
+import { FIBERGLASS_RATE, THERMAL_RATE } from "@/lib/pricing/constants";
 
 /**
  * Parse widespan "Insulation - Wainscot" sheet.
@@ -13,7 +14,13 @@ import { sheetToArray, num, cleanHeader } from "./utils";
  *     col 15 = length key, col 16 = sides price
  *     col 18 = width key, col 19 = ends price
  */
-export function readWidespanInsulationWainscot(ws: WorkSheet): {
+export function readWidespanInsulationWainscot(
+  ws: WorkSheet,
+  defaults: { fiberglass: number; thermal: number } = {
+    fiberglass: FIBERGLASS_RATE,
+    thermal: THERMAL_RATE,
+  }
+): {
   fiberglassRate: number;
   thermalRate: number;
   wainscotSides: PricingLookup;
@@ -21,8 +28,9 @@ export function readWidespanInsulationWainscot(ws: WorkSheet): {
 } {
   const data = sheetToArray(ws);
 
-  let fiberglassRate = 2.25;
-  let thermalRate = 1.65;
+  // Fallbacks if the sheet doesn't list a rate
+  let fiberglassRate = defaults.fiberglass;
+  let thermalRate = defaults.thermal;
 
   // Scan for insulation rates in the left side of the sheet
   for (let r = 0; r < Math.min(10, data.length); r++) {
