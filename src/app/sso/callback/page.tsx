@@ -1,20 +1,21 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 
 function Callback() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [error, setError] = useState<string | null>(null);
+  const token = searchParams.get("sso_token");
+  const [failed, setFailed] = useState(false);
+  // Launcher tokens are single-use (jti replay protection), so make sure we
+  // only redeem once even if the effect runs twice (React StrictMode).
+  const redeemed = useRef(false);
 
   useEffect(() => {
-    const token = searchParams.get("sso_token");
-    if (!token) {
-      setError("Missing SSO token");
-      return;
-    }
+    if (!token || redeemed.current) return;
+    redeemed.current = true;
     (async () => {
       const res = await signIn("launcher-sso", {
         token,
@@ -24,10 +25,16 @@ function Callback() {
       if (res?.ok && res.url) {
         router.replace(res.url);
       } else {
-        setError("Sign-in failed. Token may be expired or invalid.");
+        setFailed(true);
       }
     })();
-  }, [router, searchParams]);
+  }, [router, token]);
+
+  const error = !token
+    ? "Missing SSO token"
+    : failed
+      ? "Sign-in failed. Token may be expired or invalid."
+      : null;
 
   return (
     <div className="flex min-h-screen items-center justify-center">
