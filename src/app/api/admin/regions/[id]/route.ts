@@ -20,7 +20,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   if (blocked) return blocked;
 
   const session = await auth();
-  if (!session?.user || session.user.role !== "admin") {
+  if (!session?.user || session.user.permRole !== "admin") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -88,7 +88,7 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
   if (blocked) return blocked;
 
   const session = await auth();
-  if (!session?.user || session.user.role !== "admin") {
+  if (!session?.user || session.user.permRole !== "admin") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

@@ -47,7 +47,7 @@ export default function CustomerDetailPage() {
   const [customer, setCustomer] = useState<CustomerDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const role = session?.user?.role;
+  const role = session?.user?.permRole;
   const canDelete = canDeleteRecord(role);
 
   useEffect(() => {

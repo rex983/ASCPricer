@@ -45,14 +45,14 @@ interface UserProfile {
   created_at: string;
   quote_count: number;
   quote_total: number;
+  has_access: boolean;
+  can_view_as: boolean;
 }
 
-const ROLE_LABELS: Record<KnownRole, string> = {
-  admin: "Admin",
-  senior_manager: "Senior Manager",
-  sales_rep: "Sales Rep",
-  bst: "BST",
-};
+interface OrgOption {
+  name: string;
+  displayName: string;
+}
 
 const ROLE_COLORS: Record<KnownRole, "default" | "secondary" | "destructive" | "outline"> = {
   admin: "destructive",
@@ -68,30 +68,16 @@ const ROLE_ICONS: Record<KnownRole, typeof Shield> = {
   bst: Shield,
 };
 
-const ROLE_FILTERS = [
-  { value: "all", label: "All Roles" },
-  { value: "admin", label: "Admins" },
-  { value: "senior_manager", label: "Senior Managers" },
-  { value: "sales_rep", label: "Sales Reps" },
-  { value: "bst", label: "BST" },
-] as const;
-
-const OFFICE_FILTERS = [
-  { value: "all", label: "All Offices" },
-  { value: "Sales", label: "Sales" },
-  { value: "none", label: "No Office" },
-] as const;
-
-// Any launcher role this app doesn't name (junior_manager, team_lead, custom
-// roles, ...) still renders, with a neutral badge.
-const roleLabel = (r: UserRole) => ROLE_LABELS[r as KnownRole] ?? r.replace(/_/g, " ");
+// Role / office names and labels come from the launcher (launcher_roles /
+// launcher_offices via /api/admin/users). Unknown names render as-is with a
+// neutral badge.
 const roleColor = (r: UserRole) => ROLE_COLORS[r as KnownRole] ?? "outline";
 const roleIcon = (r: UserRole) => ROLE_ICONS[r as KnownRole] ?? Shield;
 
 export default function UsersPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const role = session?.user?.role;
+  const role = session?.user?.permRole;
   const isAdminOrManager = role === "admin" || role === "senior_manager";
   const canImpersonate = isAdminOrManager;
 
@@ -102,6 +88,10 @@ export default function UsersPage() {
   const [officeFilter, setOfficeFilter] = useState("all");
   const [viewingAs, setViewingAs] = useState<string | null>(null);
   const [launcherUrl, setLauncherUrl] = useState<string | null>(null);
+  const [roleOptions, setRoleOptions] = useState<OrgOption[]>([]);
+  const [officeOptions, setOfficeOptions] = useState<OrgOption[]>([]);
+  const roleLabel = (r: string) =>
+    roleOptions.find((o) => o.name === r)?.displayName ?? r.replace(/_/g, " ");
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -110,6 +100,8 @@ export default function UsersPage() {
       const data = await res.json();
       if (data.users && Array.isArray(data.users)) setUsers(data.users);
       if (typeof data.launcherUrl === "string") setLauncherUrl(data.launcherUrl);
+      if (Array.isArray(data.roles)) setRoleOptions(data.roles);
+      if (Array.isArray(data.offices)) setOfficeOptions(data.offices);
     } catch {
       /* ignore */
     } finally {
@@ -255,9 +247,10 @@ export default function UsersPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {ROLE_FILTERS.map((rf) => (
-                      <SelectItem key={rf.value} value={rf.value}>
-                        {rf.label}
+                    <SelectItem value="all">All Roles</SelectItem>
+                    {roleOptions.map((r) => (
+                      <SelectItem key={r.name} value={r.name}>
+                        {r.displayName}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -267,11 +260,13 @@ export default function UsersPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {OFFICE_FILTERS.map((of_) => (
-                      <SelectItem key={of_.value} value={of_.value}>
-                        {of_.label}
+                    <SelectItem value="all">All Offices</SelectItem>
+                    {officeOptions.map((o) => (
+                      <SelectItem key={o.name} value={o.name}>
+                        {o.displayName}
                       </SelectItem>
                     ))}
+                    <SelectItem value="none">No Office</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -341,7 +336,7 @@ export default function UsersPage() {
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
                           {user.office ? (
-                            <Badge variant="outline">{user.office}</Badge>
+                            <Badge variant="outline">{officeOptions.find((o) => o.name === user.office)?.displayName ?? user.office}</Badge>
                           ) : (
                             <span className="text-muted-foreground text-xs">---</span>
                           )}
@@ -354,7 +349,7 @@ export default function UsersPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
-                            {canImpersonate && !isSelf && user.is_active !== false && ["sales_rep", "bst", "senior_manager"].includes(user.role) && (
+                            {canImpersonate && !isSelf && user.can_view_as && (
                               <Button
                                 variant="outline"
                                 size="sm"

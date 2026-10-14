@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
   if (blocked) return blocked;
 
   const session = await auth();
-  if (!session?.user || session.user.role !== "admin") {
+  if (!session?.user || session.user.permRole !== "admin") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

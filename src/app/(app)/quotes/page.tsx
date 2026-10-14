@@ -28,7 +28,7 @@ export default function QuotesPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  const role = session?.user?.role;
+  const role = session?.user?.permRole;
   const showOffice = role === "admin" || role === "senior_manager";
   const canDelete = role === "admin" || role === "senior_manager";
 

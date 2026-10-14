@@ -1,6 +1,7 @@
 import { Eye } from "lucide-react";
 import { auth } from "@/auth";
 import { LAUNCHER_URL } from "@/lib/launcher-access";
+import { getLauncherRoles } from "@/lib/launcher-org";
 import { ViewAsExitButton } from "./view-as-exit-button";
 
 /**
@@ -13,7 +14,11 @@ export async function ViewAsBanner() {
   if (!session?.user || !viewAs) return null;
 
   const name = session.user.name || session.user.email || "this user";
-  const role = String(session.user.role || "no role").replace(/_/g, " ");
+  const roleName = String(session.user.role || "");
+  const role =
+    (await getLauncherRoles()).find((r) => r.name === roleName)?.displayName ||
+    roleName.replace(/_/g, " ") ||
+    "no role";
 
   return (
     <>

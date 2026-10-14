@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createHmac } from "crypto";
 import type { UserRole, Office } from "@/types/auth";
+import { launcherAccess } from "@/lib/launcher-access";
+import { resolvePermRole } from "@/lib/launcher-org";
 
 export const IMPERSONATION_COOKIE = "view_as_profile_id";
 export const IMPERSONATION_MAX_AGE = 8 * 60 * 60;
@@ -37,6 +39,7 @@ export function verifyCookieValue(cookieValue: string, realProfileId: string): s
 }
 
 export interface EffectiveUser {
+  /** Permission role (launcher_permission_role) — used for scoping. */
   role: UserRole;
   profileId: string;
   office?: Office;
@@ -49,6 +52,7 @@ export interface ImpersonationTarget {
   name: string | null;
   email: string;
   office: Office | null;
+  /** Real launcher role — display only. */
   role: UserRole;
 }
 
@@ -60,8 +64,8 @@ export interface ImpersonationContext {
   canImpersonate: boolean;
 }
 
-// Only these roles can be impersonation targets — never admin/manager.
-const IMPERSONATABLE_ROLES: UserRole[] = ["sales_rep", "bst", "senior_manager"];
+// Only these permission roles can be impersonation targets — never admin.
+export const IMPERSONATABLE_ROLES: UserRole[] = ["sales_rep", "bst", "senior_manager"];
 
 /**
  * Resolve the real session user and the effective user (after any valid
@@ -73,7 +77,7 @@ export async function getImpersonationContext(): Promise<ImpersonationContext | 
   if (!session?.user) return null;
 
   const real: EffectiveUser = {
-    role: session.user.role,
+    role: session.user.permRole,
     profileId: session.user.profileId,
     office: session.user.office,
     email: session.user.email ?? null,
@@ -99,11 +103,20 @@ export async function getImpersonationContext(): Promise<ImpersonationContext | 
 
   const targetRole = target?.role as UserRole | undefined;
   const targetOffice = (target?.office as Office | null) ?? null;
+  // Previewing must never reach someone without launcher access to this app,
+  // and scoping follows the target's permission role.
+  const [targetPerm, targetAccess] = target
+    ? await Promise.all([
+        resolvePermRole(target.role, supabase),
+        launcherAccess(target.id, supabase),
+      ])
+    : ["", false as const];
 
   const isValid =
     !!target &&
     !!targetRole &&
-    IMPERSONATABLE_ROLES.includes(targetRole) &&
+    targetAccess === true &&
+    IMPERSONATABLE_ROLES.includes(targetPerm) &&
     // Managers can only view reps in their own office.
     (real.role === "admin" || (real.office && targetOffice === real.office));
 
@@ -112,7 +125,7 @@ export async function getImpersonationContext(): Promise<ImpersonationContext | 
   }
 
   const effective: EffectiveUser = {
-    role: targetRole,
+    role: targetPerm,
     profileId: target.id,
     office: targetOffice ?? undefined,
     email: target.email,

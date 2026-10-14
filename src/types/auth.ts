@@ -8,7 +8,8 @@ import type { DefaultSession } from "next-auth";
  */
 export type KnownRole = "admin" | "senior_manager" | "sales_rep" | "bst";
 export type UserRole = KnownRole | (string & {});
-export type Office = "Sales";
+/** Launcher office name (launcher_offices) — admins can add more at any time. */
+export type Office = string;
 
 /** Launcher admin "View as" (read-only impersonation) — set from the SSO act claim. */
 export interface ViewAs {
@@ -26,7 +27,10 @@ declare module "next-auth" {
 
   interface Session {
     user: {
+      /** Real launcher role — display only. */
       role: UserRole;
+      /** launcher_permission_role(role): use for EVERY in-app permission check. */
+      permRole: UserRole;
       profileId: string;
       office?: Office;
       department?: string | null;
@@ -38,6 +42,8 @@ declare module "next-auth" {
 
   interface JWT {
     role?: UserRole;
+    permRole?: UserRole;
+    accessOkAt?: number;
     profileId?: string;
     office?: Office;
     department?: string | null;

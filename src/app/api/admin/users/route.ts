@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { LAUNCHER_URL } from "@/lib/launcher-access";
+import { LAUNCHER_URL, launcherAppMembers } from "@/lib/launcher-access";
+import { getLauncherOffices, getLauncherRoles, resolvePermRole } from "@/lib/launcher-org";
+import { IMPERSONATABLE_ROLES } from "@/lib/impersonation";
 
 // Read-only. Users, roles and offices are managed only in the BBD Launcher
 // (Admin -> Users); the old create / edit / delete / CSV-import endpoints
@@ -10,7 +12,7 @@ const ALLOWED_ROLES = ["admin", "senior_manager"];
 /** GET /api/admin/users — list all profiles + stats */
 export async function GET(req: NextRequest) {
   const session = await auth();
-  if (!session?.user || !ALLOWED_ROLES.includes(session.user.role)) {
+  if (!session?.user || !ALLOWED_ROLES.includes(session.user.permRole)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -26,7 +28,7 @@ export async function GET(req: NextRequest) {
     .range(offset, offset + limit - 1);
 
   // Managers can only see their own office's users
-  if (session.user.role === "senior_manager" && session.user.office) {
+  if (session.user.permRole === "senior_manager" && session.user.office) {
     query = query.eq("office", session.user.office);
   }
 
@@ -58,16 +60,38 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const enriched = profiles.map((p) => ({
-    ...p,
-    name: p.full_name ?? null,
-    quote_count: quoteStatsMap[p.id]?.count || 0,
-    quote_total: quoteStatsMap[p.id]?.total || 0,
-  }));
+  // View As candidates: only people the launcher lets into this app (fail
+  // closed — if the launcher can't answer, nobody is previewable), judged by
+  // their permission role.
+  const distinctRoles = Array.from(new Set(profiles.map((p) => String(p.role ?? ""))));
+  const [members, roles, offices, permPairs] = await Promise.all([
+    launcherAppMembers(supabase),
+    getLauncherRoles(),
+    getLauncherOffices(),
+    Promise.all(distinctRoles.map(async (r) => [r, await resolvePermRole(r, supabase)] as const)),
+  ]);
+  const permOf = Object.fromEntries(permPairs);
+
+  const enriched = profiles.map((p) => {
+    const hasAccess = !!members?.has(p.id);
+    return {
+      ...p,
+      name: p.full_name ?? null,
+      quote_count: quoteStatsMap[p.id]?.count || 0,
+      quote_total: quoteStatsMap[p.id]?.total || 0,
+      has_access: hasAccess,
+      can_view_as:
+        hasAccess &&
+        p.is_active !== false &&
+        IMPERSONATABLE_ROLES.includes(permOf[String(p.role ?? "")] ?? ""),
+    };
+  });
 
   return NextResponse.json({
     users: enriched,
     total: count ?? 0,
     launcherUrl: LAUNCHER_URL,
+    roles: roles.map((r) => ({ name: r.name, displayName: r.displayName })),
+    offices,
   });
 }

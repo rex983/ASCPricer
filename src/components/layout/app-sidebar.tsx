@@ -38,7 +38,7 @@ const adminItems = [
 export function AppSidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const role = session?.user?.role;
+  const role = session?.user?.permRole;
   const isAdminOrManager = role === "admin" || role === "senior_manager";
   const [impersonating, setImpersonating] = useState(false);
 

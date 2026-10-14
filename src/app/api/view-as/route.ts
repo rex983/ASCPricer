@@ -3,7 +3,10 @@ import { cookies } from "next/headers";
 import { auth } from "@/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
+import { launcherAccess } from "@/lib/launcher-access";
+import { resolvePermRole } from "@/lib/launcher-org";
 import {
+  IMPERSONATABLE_ROLES,
   IMPERSONATION_COOKIE,
   IMPERSONATION_MAX_AGE,
   getImpersonationContext,
@@ -13,7 +16,6 @@ import {
 import { rejectIfViewingAs } from "@/lib/view-as";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const IMPERSONATABLE_ROLES = ["sales_rep", "bst", "senior_manager"];
 
 /** GET /api/view-as — current impersonation status for the UI banner. */
 export async function GET() {
@@ -38,7 +40,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { role: realRole, office: realOffice, profileId: realId, email: realEmail } =
+  const { permRole: realRole, office: realOffice, profileId: realId, email: realEmail } =
     session.user;
 
   if (realRole !== "admin" && realRole !== "senior_manager") {
@@ -69,7 +71,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Target not found" }, { status: 404 });
   }
 
-  if (!IMPERSONATABLE_ROLES.includes(target.role)) {
+  // Only people with launcher access to this app, judged by their
+  // permission role (custom roles act as their acts_as role).
+  const [targetPerm, targetAccess] = await Promise.all([
+    resolvePermRole(target.role, supabase),
+    launcherAccess(target.id, supabase),
+  ]);
+  if (targetAccess !== true) {
+    return NextResponse.json(
+      { error: "That user doesn't have launcher access to this app" },
+      { status: 403 }
+    );
+  }
+  if (!IMPERSONATABLE_ROLES.includes(targetPerm)) {
     return NextResponse.json(
       { error: "You can only view as sales reps" },
       { status: 400 }
