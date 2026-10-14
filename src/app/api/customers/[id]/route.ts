@@ -38,7 +38,7 @@ export async function GET(
 
   // Access control: sales_rep/bst can only see own customers, manager own office
   const customer = customerResult.data;
-  if (role === "sales_rep" || role === "bst") {
+  if (role !== "admin" && role !== "senior_manager") {
     if (customer.created_by !== profileId) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
@@ -83,7 +83,7 @@ export async function DELETE(
   }
 
   // Access control: admin=all, manager=own office, sales_rep/bst=own only
-  if (role === "sales_rep" || role === "bst") {
+  if (role !== "admin" && role !== "senior_manager") {
     if (customer.created_by !== profileId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -141,7 +141,7 @@ export async function PATCH(
   }
 
   // Access control: admin=all, manager=own office, sales_rep/bst=own only
-  if (role === "sales_rep" || role === "bst") {
+  if (role !== "admin" && role !== "senior_manager") {
     if (existing.created_by !== profileId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

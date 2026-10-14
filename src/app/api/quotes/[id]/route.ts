@@ -33,7 +33,7 @@ export async function GET(
   // Enforce access: sales_rep/bst can only see own quotes
   const effective = await getEffectiveUser();
   const { role, profileId, office } = effective ?? session.user;
-  if (role === "sales_rep" || role === "bst") {
+  if (role !== "admin" && role !== "senior_manager") {
     if (data.created_by !== profileId) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
@@ -73,7 +73,7 @@ export async function DELETE(
   const { id } = await params;
 
   // Only admins and managers may delete quotes.
-  if (role === "sales_rep" || role === "bst") {
+  if (role !== "admin" && role !== "senior_manager") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -139,7 +139,7 @@ export async function PATCH(
   }
 
   // Access control: admin=all, manager=own office, sales_rep/bst=own only
-  if (role === "sales_rep" || role === "bst") {
+  if (role !== "admin" && role !== "senior_manager") {
     if (existing.created_by !== profileId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

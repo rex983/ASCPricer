@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
     .gte("created_at", startISO)
     .lte("created_at", endISO);
 
-  if (role === "sales_rep" || role === "bst") {
+  if (role !== "admin" && role !== "senior_manager") {
     customerQuery = customerQuery.eq("created_by", profileId);
   } else if (role === "senior_manager" && office) {
     customerQuery = customerQuery.eq("office", office);
@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
     .gte("created_at", startISO)
     .lte("created_at", endISO);
 
-  if (role === "sales_rep" || role === "bst") {
+  if (role !== "admin" && role !== "senior_manager") {
     quoteQuery = quoteQuery.eq("created_by", profileId);
   } else if (role === "senior_manager" && office) {
     quoteQuery = quoteQuery.eq("office", office);

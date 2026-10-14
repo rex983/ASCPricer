@@ -30,7 +30,7 @@ export async function GET(
   // Access control: sales_rep/bst can only see own quotes, manager own office
   const effective = await getEffectiveUser();
   const { role, profileId, office } = effective ?? session.user;
-  if (role === "sales_rep" || role === "bst") {
+  if (role !== "admin" && role !== "senior_manager") {
     if (quote.created_by !== profileId) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
