@@ -4,33 +4,19 @@ import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import {
-  Plus,
-  Pencil,
-  Trash2,
   Loader2,
   Shield,
   Search,
   ShieldCheck,
   ShieldAlert,
-  Upload,
-  CheckCircle2,
-  AlertCircle,
   Download,
   Eye,
+  ExternalLink,
 } from "lucide-react";
 import { AppHeader } from "@/components/layout/app-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -47,7 +33,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/utils";
-import type { UserRole, Office } from "@/types/auth";
+import type { KnownRole, UserRole, Office } from "@/types/auth";
 
 interface UserProfile {
   id: string;
@@ -55,26 +41,27 @@ interface UserProfile {
   name: string | null;
   role: UserRole;
   office: Office | null;
+  is_active: boolean | null;
   created_at: string;
   quote_count: number;
   quote_total: number;
 }
 
-const ROLE_LABELS: Record<UserRole, string> = {
+const ROLE_LABELS: Record<KnownRole, string> = {
   admin: "Admin",
   senior_manager: "Senior Manager",
   sales_rep: "Sales Rep",
   bst: "BST",
 };
 
-const ROLE_COLORS: Record<UserRole, "default" | "secondary" | "destructive" | "outline"> = {
+const ROLE_COLORS: Record<KnownRole, "default" | "secondary" | "destructive" | "outline"> = {
   admin: "destructive",
   senior_manager: "default",
   sales_rep: "secondary",
   bst: "outline",
 };
 
-const ROLE_ICONS: Record<UserRole, typeof Shield> = {
+const ROLE_ICONS: Record<KnownRole, typeof Shield> = {
   admin: ShieldAlert,
   senior_manager: ShieldCheck,
   sales_rep: Shield,
@@ -95,46 +82,26 @@ const OFFICE_FILTERS = [
   { value: "none", label: "No Office" },
 ] as const;
 
-const emptyForm = {
-  name: "",
-  email: "",
-  role: "sales_rep" as string,
-  office: "" as string,
-};
+// Any launcher role this app doesn't name (junior_manager, team_lead, custom
+// roles, ...) still renders, with a neutral badge.
+const roleLabel = (r: UserRole) => ROLE_LABELS[r as KnownRole] ?? r.replace(/_/g, " ");
+const roleColor = (r: UserRole) => ROLE_COLORS[r as KnownRole] ?? "outline";
+const roleIcon = (r: UserRole) => ROLE_ICONS[r as KnownRole] ?? Shield;
 
 export default function UsersPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const role = session?.user?.role;
-  const isAdmin = role === "admin";
   const isAdminOrManager = role === "admin" || role === "senior_manager";
   const canImpersonate = isAdminOrManager;
 
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<UserProfile | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [officeFilter, setOfficeFilter] = useState("all");
   const [viewingAs, setViewingAs] = useState<string | null>(null);
-
-  const [importing, setImporting] = useState(false);
-  const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [importResult, setImportResult] = useState<{
-    total: number;
-    created: number;
-    skipped: number;
-    errors: { row: number; email: string; reason: string }[];
-  } | null>(null);
-
-  const [form, setForm] = useState(emptyForm);
-
-  const set = (field: string, value: string) =>
-    setForm((prev) => ({ ...prev, [field]: value }));
+  const [launcherUrl, setLauncherUrl] = useState<string | null>(null);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -142,6 +109,7 @@ export default function UsersPage() {
       const res = await fetch("/api/admin/users?limit=200");
       const data = await res.json();
       if (data.users && Array.isArray(data.users)) setUsers(data.users);
+      if (typeof data.launcherUrl === "string") setLauncherUrl(data.launcherUrl);
     } catch {
       /* ignore */
     } finally {
@@ -180,42 +148,6 @@ export default function UsersPage() {
     }
   };
 
-  const handleCsvUpload = async (file: File) => {
-    setImporting(true);
-    setImportResult(null);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch("/api/admin/users/import", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || "Import failed");
-        return;
-      }
-      setImportResult(data);
-      setImportDialogOpen(false);
-      await fetchUsers();
-    } catch {
-      alert("Import failed — check console");
-    } finally {
-      setImporting(false);
-    }
-  };
-
-  const downloadTemplate = () => {
-    const csv = "name,email,role,office\nJohn Doe,john@bigbuildingsdirect.com,sales_rep,Sales\n";
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "users-template.csv";
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   const downloadCsv = () => {
     const escape = (v: string) => (v.includes(",") || v.includes('"') ? `"${v.replace(/"/g, '""')}"` : v);
     const header = "name,email,role,office,quotes,total_sales";
@@ -237,94 +169,6 @@ export default function UsersPage() {
     a.download = `users-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  };
-
-  const openCreate = () => {
-    setEditingUser(null);
-    setForm(emptyForm);
-    setError(null);
-    setDialogOpen(true);
-  };
-
-  const openEdit = (user: UserProfile) => {
-    setEditingUser(user);
-    setForm({
-      name: user.name || "",
-      email: user.email,
-      role: user.role,
-      office: user.office || "",
-    });
-    setError(null);
-    setDialogOpen(true);
-  };
-
-  const handleSave = async () => {
-    if (!form.name.trim()) {
-      setError("Name is required");
-      return;
-    }
-    if (!form.email.trim()) {
-      setError("Email is required");
-      return;
-    }
-
-    setSaving(true);
-    setError(null);
-
-    try {
-      const url = editingUser
-        ? `/api/admin/users/${editingUser.id}`
-        : "/api/admin/users";
-      const method = editingUser ? "PATCH" : "POST";
-
-      const payload: Record<string, unknown> = {
-        name: form.name.trim(),
-        email: form.email.trim(),
-        office: form.office || null,
-      };
-
-      if (isAdmin) {
-        payload.role = form.role;
-      }
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Failed to save");
-        return;
-      }
-
-      setDialogOpen(false);
-      await fetchUsers();
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!deleteConfirm) return;
-    setSaving(true);
-    setError(null);
-
-    try {
-      const res = await fetch(`/api/admin/users/${deleteConfirm.id}`, {
-        method: "DELETE",
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Failed to delete");
-        return;
-      }
-      setDeleteConfirm(null);
-      await fetchUsers();
-    } finally {
-      setSaving(false);
-    }
   };
 
   const filtered = users.filter((u) => {
@@ -363,62 +207,37 @@ export default function UsersPage() {
 
   return (
     <>
-      <AppHeader title="User Management" />
+      <AppHeader title="Users" />
       <div className="flex-1 p-4 sm:p-6">
         <div className="mx-auto max-w-7xl space-y-4">
+          <div className="flex flex-col gap-1 rounded-lg border bg-muted/40 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-muted-foreground">
+              Users, roles and offices are managed in the BBD Launcher (Admin &rarr; Users).
+              Changes there apply here within a minute.
+            </span>
+            {launcherUrl && (
+              <a
+                href={`${launcherUrl}/admin/users`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+              >
+                Managed in the BBD Launcher
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            )}
+          </div>
+
           {/* Stats */}
           <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="secondary">{users.length} total</Badge>
             {Object.entries(roleCounts).map(([role, count]) => (
               <Badge key={role} variant="outline" className="text-xs">
-                {ROLE_LABELS[role as UserRole] || role}: {count}
+                {roleLabel(role)}: {count}
               </Badge>
             ))}
           </div>
 
-          {/* Import Result Banner */}
-          {importResult && (
-            <div className={`flex items-start gap-2 rounded-lg border px-4 py-3 ${
-              importResult.errors.length > 0
-                ? "border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30"
-                : "border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-950/30"
-            }`}>
-              {importResult.errors.length > 0 ? (
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-              ) : (
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
-              )}
-              <div className="flex-1 space-y-1">
-                <span className={`text-sm ${
-                  importResult.errors.length > 0
-                    ? "text-amber-800 dark:text-amber-200"
-                    : "text-green-800 dark:text-green-200"
-                }`}>
-                  CSV import: {importResult.created} created, {importResult.skipped} skipped{importResult.errors.length > 0 && `, ${importResult.errors.length} failed`}.
-                </span>
-                {importResult.errors.length > 0 && (
-                  <ul className="text-xs text-amber-700 dark:text-amber-300 space-y-0.5">
-                    {importResult.errors.map((e, i) => (
-                      <li key={i}>Row {e.row}: {e.email} — {e.reason}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => setImportResult(null)}
-                className={`text-xs hover:underline ${
-                  importResult.errors.length > 0
-                    ? "text-amber-600 dark:text-amber-400"
-                    : "text-green-600 dark:text-green-400"
-                }`}
-              >
-                Dismiss
-              </button>
-            </div>
-          )}
-
-          {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-3">
               <div className="relative w-full sm:w-auto">
@@ -457,21 +276,11 @@ export default function UsersPage() {
                 </Select>
               </div>
             </div>
-            {isAdmin && (
-              <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={downloadCsv}>
-                  <Download className="mr-2 h-4 w-4" />
-                  Download CSV
-                </Button>
-                <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Import CSV
-                </Button>
-                <Button onClick={openCreate}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add User
-                </Button>
-              </div>
+            {role === "admin" && (
+              <Button variant="outline" onClick={downloadCsv}>
+                <Download className="mr-2 h-4 w-4" />
+                Download CSV
+              </Button>
             )}
           </div>
 
@@ -503,9 +312,8 @@ export default function UsersPage() {
                 </TableHeader>
                 <TableBody>
                   {filtered.map((user) => {
-                    const RoleIcon = ROLE_ICONS[user.role];
+                    const RoleIcon = roleIcon(user.role);
                     const isSelf = user.id === session?.user?.profileId;
-                    const isPrimaryAdmin = user.email === "rex@bigbuildingsdirect.com";
 
                     return (
                       <TableRow key={user.id}>
@@ -517,13 +325,18 @@ export default function UsersPage() {
                                 You
                               </Badge>
                             )}
+                            {user.is_active === false && (
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                Inactive
+                              </Badge>
+                            )}
                           </div>
                           <div className="text-xs text-muted-foreground">{user.email}</div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={ROLE_COLORS[user.role]}>
+                          <Badge variant={roleColor(user.role)}>
                             <RoleIcon className="mr-1 h-3 w-3" />
-                            {ROLE_LABELS[user.role]}
+                            {roleLabel(user.role)}
                           </Badge>
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
@@ -541,7 +354,7 @@ export default function UsersPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
-                            {canImpersonate && !isSelf && user.role !== "admin" && (
+                            {canImpersonate && !isSelf && user.is_active !== false && ["sales_rep", "bst", "senior_manager"].includes(user.role) && (
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -557,27 +370,6 @@ export default function UsersPage() {
                                 View As
                               </Button>
                             )}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              onClick={() => openEdit(user)}
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            {isAdmin && !isSelf && !isPrimaryAdmin && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7"
-                                onClick={() => {
-                                  setError(null);
-                                  setDeleteConfirm(user);
-                                }}
-                              >
-                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                              </Button>
-                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -590,161 +382,6 @@ export default function UsersPage() {
         </div>
       </div>
 
-      {/* Import CSV Dialog */}
-      <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Import Users from CSV</DialogTitle>
-            <DialogDescription>
-              Upload a CSV file with columns: <strong>name</strong>, <strong>email</strong> (required), and optionally <strong>role</strong> (admin, senior_manager, sales_rep, bst) and <strong>office</strong> (Sales). Existing emails will be skipped.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="flex items-center justify-center w-full">
-              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
-                <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                  {importing ? (
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-2" />
-                  ) : (
-                    <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-                  )}
-                  <p className="text-sm text-muted-foreground">
-                    {importing ? "Importing..." : "Click to upload or drag & drop"}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">.csv files only</p>
-                </div>
-                <input
-                  type="file"
-                  accept=".csv"
-                  className="hidden"
-                  disabled={importing}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleCsvUpload(file);
-                    e.target.value = "";
-                  }}
-                />
-              </label>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={downloadTemplate}>
-              <Download className="mr-2 h-3.5 w-3.5" />
-              Download Template
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Create / Edit Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>
-              {editingUser ? "Edit User" : "Add User"}
-            </DialogTitle>
-            <DialogDescription>
-              {editingUser
-                ? "Update this user's profile."
-                : "Create a new user."}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>Name *</Label>
-                <Input
-                  value={form.name}
-                  onChange={(e) => set("name", e.target.value)}
-                  placeholder="Full name"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>Email *</Label>
-                <Input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => set("email", e.target.value)}
-                  placeholder="user@bigbuildingsdirect.com"
-                />
-              </div>
-              {isAdmin && (
-                <div className="space-y-1">
-                  <Label>App Role *</Label>
-                  <Select
-                    value={form.role}
-                    onValueChange={(v) => set("role", v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="senior_manager">Senior Manager</SelectItem>
-                      <SelectItem value="sales_rep">Sales Rep</SelectItem>
-                      <SelectItem value="bst">BST</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              <div className="space-y-1">
-                <Label>Office</Label>
-                <Select
-                  value={form.office || "none"}
-                  onValueChange={(v) => set("office", v === "none" ? "" : v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No Office</SelectItem>
-                    <SelectItem value="Sales">Sales</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {error && <p className="text-sm text-destructive">{error}</p>}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {editingUser ? "Save Changes" : "Add User"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete User</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to permanently delete{" "}
-              <strong>{deleteConfirm?.name || deleteConfirm?.email}</strong>?
-              This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirm(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={saving}
-            >
-              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Delete Permanently
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }

@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { logAudit } from "@/lib/audit";
+import { LAUNCHER_URL } from "@/lib/launcher-access";
 
+// Read-only. Users, roles and offices are managed only in the BBD Launcher
+// (Admin -> Users); the old create / edit / delete / CSV-import endpoints
+// that wrote the shared profiles table from here were removed.
 const ALLOWED_ROLES = ["admin", "senior_manager"];
-const VALID_USER_ROLES = ["admin", "senior_manager", "sales_rep", "bst"];
-const VALID_OFFICES = ["Sales"];
 /** GET /api/admin/users — list all profiles + stats */
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -64,78 +65,9 @@ export async function GET(req: NextRequest) {
     quote_total: quoteStatsMap[p.id]?.total || 0,
   }));
 
-  return NextResponse.json({ users: enriched, total: count ?? 0 });
-}
-
-/** POST /api/admin/users — create a new profile + optionally a linked sales rep */
-export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "admin") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const body = await req.json();
-  const { name, email, role, office, phone } = body as {
-    name: string;
-    email: string;
-    role: string;
-    office?: string;
-    phone?: string;
-  };
-
-  if (!name?.trim()) {
-    return NextResponse.json({ error: "Name is required" }, { status: 400 });
-  }
-  if (!email?.trim()) {
-    return NextResponse.json({ error: "Email is required" }, { status: 400 });
-  }
-  if (!role || !VALID_USER_ROLES.includes(role)) {
-    return NextResponse.json(
-      { error: `Role must be one of: ${VALID_USER_ROLES.join(", ")}` },
-      { status: 400 }
-    );
-  }
-  if (office && !VALID_OFFICES.includes(office)) {
-    return NextResponse.json({ error: "Office must be Sales" }, { status: 400 });
-  }
-
-  const supabase = createAdminClient();
-
-  // Check for duplicate email
-  const { data: existing } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("email", email.trim().toLowerCase())
-    .maybeSingle();
-
-  if (existing) {
-    return NextResponse.json({ error: "A user with this email already exists" }, { status: 409 });
-  }
-
-  const { data: profile, error } = await supabase
-    .from("profiles")
-    .insert({
-      full_name: name.trim(),
-      email: email.trim().toLowerCase(),
-      role,
-      office: office || null,
-    })
-    .select()
-    .single();
-
-  if (error) {
-    console.error("users POST error:", error);
-    return NextResponse.json({ error: "Database operation failed" }, { status: 500 });
-  }
-
-  await logAudit({
-    userId: session.user.profileId,
-    userEmail: session.user.email,
-    action: "create_user",
-    resourceType: "profile",
-    resourceId: profile.id,
-    details: { name: profile.full_name, email: profile.email, role: profile.role, office: profile.office },
+  return NextResponse.json({
+    users: enriched,
+    total: count ?? 0,
+    launcherUrl: LAUNCHER_URL,
   });
-
-  return NextResponse.json({ ...profile, name: profile.full_name }, { status: 201 });
 }
