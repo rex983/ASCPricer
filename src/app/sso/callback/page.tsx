@@ -9,6 +9,7 @@ function Callback() {
   const searchParams = useSearchParams();
   const token = searchParams.get("sso_token");
   const [failed, setFailed] = useState(false);
+  const [noAccess, setNoAccess] = useState(false);
   // Launcher tokens are single-use (jti replay protection), so make sure we
   // only redeem once even if the effect runs twice (React StrictMode).
   const redeemed = useRef(false);
@@ -24,6 +25,8 @@ function Callback() {
       });
       if (res?.ok && res.url) {
         router.replace(res.url);
+      } else if (res?.error === "NoLauncherAccess") {
+        setNoAccess(true);
       } else {
         setFailed(true);
       }
@@ -32,7 +35,9 @@ function Callback() {
 
   const error = !token
     ? "Missing SSO token"
-    : failed
+    : noAccess
+      ? "You don't have access to ASC Pricer in the launcher. Ask an admin to grant it in the BBD Launcher."
+      : failed
       ? "Sign-in failed. Token may be expired or invalid."
       : null;
 

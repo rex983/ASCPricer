@@ -18,6 +18,7 @@ import { Logo } from "@/components/layout/logo";
 function LoginForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/calculator";
+  const authError = searchParams.get("error");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -49,6 +50,13 @@ function LoginForm() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {authError && (
+          <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {authError === "NoLauncherAccess"
+              ? "You don't have access to ASC Pricer in the launcher. Ask an admin to grant it in the BBD Launcher."
+              : "Sign-in failed. Your account must be set up and active in the BBD Launcher."}
+          </p>
+        )}
         <Button
           onClick={handleGoogleSignIn}
           disabled={loading}
