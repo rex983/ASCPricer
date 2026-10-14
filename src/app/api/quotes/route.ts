@@ -8,6 +8,7 @@ import {
   getPricingRow,
 } from "@/lib/pricing/data";
 import { getImpersonationContext } from "@/lib/impersonation";
+import { getLauncherOffices, isLauncherOffice } from "@/lib/launcher-org";
 import type { BuildingConfig, PricingMatrices } from "@/types/pricing";
 import { rejectIfViewingAs } from "@/lib/view-as";
 
@@ -111,9 +112,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid region ID" }, { status: 400 });
   }
 
-  // Validate office if provided
-  const VALID_OFFICES = ["Sales"];
-  if (office && !VALID_OFFICES.includes(office)) {
+  // Validate office if provided — any launcher office (launcher_offices)
+  if (office && !(await isLauncherOffice(office))) {
     return NextResponse.json({ error: "Invalid office" }, { status: 400 });
   }
 
@@ -238,7 +238,7 @@ export async function POST(req: NextRequest) {
         city: customerCity,
         state: customerState,
         zip: customerZip,
-        office: quoteOffice || "Sales",
+        office: quoteOffice || (await getLauncherOffices())[0]?.name || "Sales",
         created_by: validUuid,
       })
       .select("id")

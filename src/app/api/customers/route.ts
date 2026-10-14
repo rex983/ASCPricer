@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getImpersonationContext } from "@/lib/impersonation";
+import { isLauncherOffice } from "@/lib/launcher-org";
 import { rejectIfViewingAs } from "@/lib/view-as";
 
 export async function GET(req: NextRequest) {
@@ -78,9 +79,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (office !== "Sales") {
+  if (!(await isLauncherOffice(office))) {
     return NextResponse.json(
-      { error: "office must be Sales" },
+      { error: "office must be a BBD Launcher office" },
       { status: 400 }
     );
   }

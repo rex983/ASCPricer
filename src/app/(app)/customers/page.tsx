@@ -52,7 +52,7 @@ export default function CustomersPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const userOffice = session?.user?.office;
-  const userRole = session?.user?.role;
+  const userRole = session?.user?.permRole;
   const canDelete = canDeleteRecord(userRole);
 
   const fetchCustomers = useCallback(async () => {
@@ -203,6 +203,20 @@ function NewCustomerForm({
   onSaved: () => void;
 }) {
   const [saving, setSaving] = useState(false);
+  // Offices come from the launcher (launcher_offices via /api/org).
+  const [offices, setOffices] = useState<{ name: string; displayName: string }[]>([]);
+  useEffect(() => {
+    fetch("/api/org")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!Array.isArray(d?.offices)) return;
+        setOffices(d.offices);
+        if (!defaultOffice && d.offices[0]) {
+          setForm((prev) => (prev.office ? prev : { ...prev, office: d.offices[0].name }));
+        }
+      })
+      .catch(() => {});
+  }, [defaultOffice]);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -211,7 +225,7 @@ function NewCustomerForm({
     city: "",
     state: "",
     zip: "",
-    office: defaultOffice || "Sales",
+    office: defaultOffice || "",
   });
 
   const set = (field: string, value: string) =>
@@ -304,7 +318,11 @@ function NewCustomerForm({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Sales">Sales</SelectItem>
+                {offices.map((o) => (
+                  <SelectItem key={o.name} value={o.name}>
+                    {o.displayName}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           ) : (
