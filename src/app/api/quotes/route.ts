@@ -9,6 +9,7 @@ import {
 } from "@/lib/pricing/data";
 import { getImpersonationContext } from "@/lib/impersonation";
 import type { BuildingConfig, PricingMatrices } from "@/types/pricing";
+import { rejectIfViewingAs } from "@/lib/view-as";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -64,6 +65,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const blocked = await rejectIfViewingAs();
+  if (blocked) return blocked;
+
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

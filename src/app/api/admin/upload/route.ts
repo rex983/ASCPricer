@@ -11,6 +11,7 @@ import {
 } from "@/lib/pricing/data";
 
 import type { PricingMatrices, SpreadsheetType } from "@/types/pricing";
+import { rejectIfViewingAs } from "@/lib/view-as";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -97,6 +98,9 @@ function isValidUuid(v: unknown): v is string {
 }
 
 export async function POST(req: NextRequest) {
+  const blocked = await rejectIfViewingAs();
+  if (blocked) return blocked;
+
   const session = await auth();
   if (!session?.user || session.user.role !== "admin") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

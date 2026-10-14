@@ -9,6 +9,7 @@ import {
   invalidatePricingCache,
   parseInsulationRates,
 } from "@/lib/pricing/data";
+import { rejectIfViewingAs } from "@/lib/view-as";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -38,6 +39,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
+  const blocked = await rejectIfViewingAs();
+  if (blocked) return blocked;
+
   const session = await auth();
   if (!session?.user || session.user.role !== "admin") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

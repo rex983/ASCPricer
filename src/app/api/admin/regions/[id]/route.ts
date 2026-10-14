@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
 import { APP_CONFIG_TAG, PRICING_DATA_TAG, REGIONS_TAG, invalidatePricingCache } from "@/lib/pricing/data";
+import { rejectIfViewingAs } from "@/lib/view-as";
 
 const VALID_STATES = new Set([
   "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN",
@@ -15,6 +16,9 @@ type Ctx = { params: Promise<{ id: string }> };
 
 /** PATCH /api/admin/regions/[id] — update region fields */
 export async function PATCH(req: NextRequest, ctx: Ctx) {
+  const blocked = await rejectIfViewingAs();
+  if (blocked) return blocked;
+
   const session = await auth();
   if (!session?.user || session.user.role !== "admin") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -80,6 +84,9 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
 /** DELETE /api/admin/regions/[id] — permanently delete a region */
 export async function DELETE(_req: NextRequest, ctx: Ctx) {
+  const blocked = await rejectIfViewingAs();
+  if (blocked) return blocked;
+
   const session = await auth();
   if (!session?.user || session.user.role !== "admin") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

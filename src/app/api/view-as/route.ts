@@ -10,6 +10,7 @@ import {
   signCookieValue,
   verifyCookieValue,
 } from "@/lib/impersonation";
+import { rejectIfViewingAs } from "@/lib/view-as";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const IMPERSONATABLE_ROLES = ["sales_rep", "bst", "senior_manager"];
@@ -29,6 +30,9 @@ export async function GET() {
 
 /** POST /api/view-as — start viewing as a sales rep. */
 export async function POST(req: NextRequest) {
+  const blocked = await rejectIfViewingAs();
+  if (blocked) return blocked;
+
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -117,6 +121,9 @@ export async function POST(req: NextRequest) {
 
 /** DELETE /api/view-as — stop impersonating. */
 export async function DELETE() {
+  const blocked = await rejectIfViewingAs();
+  if (blocked) return blocked;
+
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

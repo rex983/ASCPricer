@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getImpersonationContext } from "@/lib/impersonation";
+import { rejectIfViewingAs } from "@/lib/view-as";
 
 export async function GET(req: NextRequest) {
   const ctx = await getImpersonationContext();
@@ -47,6 +48,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const blocked = await rejectIfViewingAs();
+  if (blocked) return blocked;
+
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
