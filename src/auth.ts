@@ -2,9 +2,11 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import type { JWT } from "next-auth/jwt";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyLauncherSsoToken } from "@/lib/sso/verifier";
-import type { UserRole, Office } from "@/types/auth";
+import { launcherCanOpenApp, NO_LAUNCHER_ACCESS } from "@/lib/launcher-access";
+import type { UserRole, Office, ViewAs } from "@/types/auth";
 import { timingSafeEqual } from "crypto";
 
 // Dev bypass ONLY when NODE_ENV is literally "development" — never via env flag
@@ -15,23 +17,33 @@ const ADMIN_EMAIL = "rex@bigbuildingsdirect.com";
 // Break-glass password login for the bootstrap admin. OFF unless
 // ENABLE_ADMIN_PASSWORD_LOGIN=true is set explicitly. Even when on, the
 // account must have an active row in profiles — there is no synthetic
-// fallback identity.
+// fallback identity. It skips the launcher app-access check, but only
+// while the profile's role is admin.
 const adminPasswordLoginEnabled =
   process.env.ENABLE_ADMIN_PASSWORD_LOGIN === "true";
 
-// Re-validate the session against profiles at most this often. Also
-// refreshes role/office, replacing the old 5-minute role refresh.
+// Re-validate the session against profiles (and launcher app access) at
+// most this often. Also refreshes role/office/department/is_it/name, so a
+// role change in the launcher lands within a minute.
 const RECHECK_INTERVAL_MS = 60_000;
+
+// Hard cap on a launcher admin "View as" session.
+const VIEW_AS_MAX_MS = 60 * 60 * 1000;
 
 type ProfileRow = {
   id: string;
+  email: string;
+  full_name: string | null;
   role: string;
   office: string | null;
+  department: string | null;
+  is_it: boolean | null;
   is_active: boolean | null;
   signed_out_at: string | null;
 };
 
-const PROFILE_COLUMNS = "id, role, office, is_active, signed_out_at";
+const PROFILE_COLUMNS =
+  "id, email, full_name, role, office, department, is_it, is_active, signed_out_at";
 
 /** Timing-safe string comparison to prevent timing attacks on password checks. */
 function safeCompare(a: string, b: string): boolean {
@@ -39,26 +51,58 @@ function safeCompare(a: string, b: string): boolean {
   return timingSafeEqual(Buffer.from(a), Buffer.from(b));
 }
 
-/** Copy role/office from the profile row onto the token. */
+async function loadProfile(
+  supabase: SupabaseClient,
+  column: "email" | "id",
+  value: string,
+): Promise<ProfileRow | null> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select(PROFILE_COLUMNS)
+    .eq(column, value)
+    .maybeSingle<ProfileRow>();
+  if (error) throw error;
+  return data;
+}
+
+/** The launcher admin behind a "View as" session must still be an active admin. */
+function isActiveAdmin(profile: ProfileRow | null): boolean {
+  return !!profile && profile.is_active !== false && profile.role === "admin";
+}
+
+/** Copy the launcher-owned identity fields from the profile row onto the token. */
 function applyProfile(token: JWT, profile: ProfileRow) {
   token.role = profile.role as UserRole;
   token.profileId = profile.id;
   token.office = profile.office ? (profile.office as Office) : undefined;
+  token.department = profile.department ?? null;
+  token.isIt = profile.is_it === true;
+  if (profile.full_name) token.name = profile.full_name;
 }
 
 /**
- * Re-read the profile and decide whether the session is still valid.
- * Returns false to revoke, true to keep. Throws on transient DB errors so
- * the caller can fail open without bumping checkedAt.
+ * Re-read the profile (+ launcher access, + the view-as actor) and decide
+ * whether the session is still valid. Returns false to revoke, true to keep.
+ * Throws on transient DB errors so the caller can fail open without bumping
+ * checkedAt. The launcher access RPC fails open on its own.
  */
 async function recheckProfile(token: JWT, email: string): Promise<boolean> {
   const supabase = createAdminClient();
-  const { data: profile, error } = await supabase
-    .from("profiles")
-    .select(PROFILE_COLUMNS)
-    .eq("email", email)
-    .maybeSingle<ProfileRow>();
-  if (error) throw error;
+  const viewAs = (token.viewAs as ViewAs | null | undefined) ?? null;
+  const profileId = token.profileId as string | undefined;
+  const breakGlass = token.breakGlass === true;
+
+  const [profile, canOpen, actor] = await Promise.all([
+    loadProfile(supabase, "email", email),
+    // Break-glass admin sessions are exempt (checked against role below).
+    breakGlass || !profileId
+      ? Promise.resolve(true)
+      : launcherCanOpenApp(profileId, supabase),
+    viewAs
+      ? loadProfile(supabase, "id", viewAs.actorProfileId)
+      : Promise.resolve(null),
+  ]);
+
   if (!profile) return false;
   if (profile.is_active === false) return false;
   const signedInAt =
@@ -67,6 +111,14 @@ async function recheckProfile(token: JWT, email: string): Promise<boolean> {
     const signedOutSec = Math.floor(new Date(profile.signed_out_at).getTime() / 1000);
     if (signedOutSec > signedInAt) return false;
   }
+  if (breakGlass) {
+    if (profile.role !== "admin") return false;
+  } else if (!canOpen) {
+    return false;
+  } else if (!profileId && !(await launcherCanOpenApp(profile.id, supabase))) {
+    return false;
+  }
+  if (viewAs && !isActiveAdmin(actor)) return false;
   applyProfile(token, profile);
   return true;
 }
@@ -109,6 +161,7 @@ providers.push(
           email: claims.email,
           name: claims.name || null,
           image: null,
+          act: claims.act,
         };
       } catch (err) {
         console.error("Launcher SSO token verification failed:", err);
@@ -213,55 +266,59 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // Dev synthetic user — local development only.
       if (isDev && user.id === "dev-user-001") return true;
 
-      if (account?.provider === "google") {
-        if (!user.email.endsWith("@bigbuildingsdirect.com")) return false;
-
-        // Auto-provision a profile row for Google Workspace users if one doesn't exist
-        try {
-          const supabase = createAdminClient();
-          const { data: existing } = await supabase
-            .from("profiles")
-            .select("id, is_active")
-            .eq("email", user.email)
-            .single();
-
-          if (!existing) {
-            await supabase.from("profiles").insert({
-              email: user.email,
-              full_name: user.name || user.email.split("@")[0],
-              role: "sales_rep",
-            });
-          } else if (existing.is_active === false) {
-            return false;
-          }
-        } catch {
-          // Non-blocking — profile will be created on next sign-in if this fails
-        }
-
-        return true;
+      if (
+        account?.provider === "google" &&
+        !user.email.endsWith("@bigbuildingsdirect.com")
+      ) {
+        return false;
       }
 
-      // Launcher SSO / admin credentials: the identity is already verified,
-      // but the shared profile must exist and be active.
+      // Every provider: the launcher's profiles row is the only identity
+      // source. No row, inactive, or no launcher access to this app => no
+      // sign-in. (Profiles are never created here — the launcher's
+      // Admin -> Users is the only place users are added.)
       try {
         const supabase = createAdminClient();
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id, is_active")
-          .eq("email", user.email)
-          .single();
+        const profile = await loadProfile(supabase, "email", user.email);
         if (!profile) return false;
         if (profile.is_active === false) return false;
+
+        // Documented break-glass path (ENABLE_ADMIN_PASSWORD_LOGIN) keeps
+        // working for role=admin only, even if launcher access is off.
+        const breakGlass =
+          account?.provider === "credentials" && profile.role === "admin";
+        if (!breakGlass && !(await launcherCanOpenApp(profile.id, supabase))) {
+          return `/login?error=${NO_LAUNCHER_ACCESS}`;
+        }
+
+        // Launcher admin "View as": the actor must be an active admin.
+        if (user.act) {
+          if (account?.provider !== "launcher-sso") return false;
+          const actor = await loadProfile(supabase, "id", user.act.profile_id);
+          if (!actor || !isActiveAdmin(actor)) return false;
+          if (actor.email.toLowerCase() !== user.act.sub.toLowerCase()) {
+            return false;
+          }
+        }
         return true;
       } catch {
         return false;
       }
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       // On initial sign-in, populate token from DB
       if (user?.email) {
         token.signedInAt = Math.floor(Date.now() / 1000);
         token.checkedAt = Date.now();
+        token.breakGlass = account?.provider === "credentials";
+        token.viewAs = user.act
+          ? ({
+              actorProfileId: user.act.profile_id,
+              actorEmail: user.act.sub,
+              actorName: user.act.name || user.act.sub,
+              startedAt: Date.now(),
+            } satisfies ViewAs)
+          : null;
 
         // Dev user gets admin only in development
         if (isDev && user.id === "dev-user-001") {
@@ -272,13 +329,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         // All users (including admin) — look up actual role from DB
         try {
-          const supabase = createAdminClient();
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select(PROFILE_COLUMNS)
-            .eq("email", user.email)
-            .single<ProfileRow>();
-
+          const profile = await loadProfile(createAdminClient(), "email", user.email);
           if (profile) {
             applyProfile(token, profile);
           } else {
@@ -291,10 +342,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
 
       // Subsequent requests: re-validate at most every 60s. Revokes the
-      // session on deactivation / launcher sign-out and refreshes role.
+      // session on deactivation / launcher sign-out / lost launcher access /
+      // view-as actor no longer an admin, and refreshes role + org fields.
       if (isDev && token.profileId === "dev-user-001") return token;
       const email = token.email as string | undefined;
       if (!email) return null;
+      const viewAs = (token.viewAs as ViewAs | null | undefined) ?? null;
+      if (viewAs && Date.now() - viewAs.startedAt > VIEW_AS_MAX_MS) return null;
       const checkedAt = (token.checkedAt as number | undefined) ?? 0;
       if (Date.now() - checkedAt < RECHECK_INTERVAL_MS) return token;
       try {
@@ -311,7 +365,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.role = token.role as UserRole;
         session.user.profileId = token.profileId as string;
         if (token.office) session.user.office = token.office as Office;
+        session.user.department = (token.department as string | null | undefined) ?? null;
+        session.user.isIt = token.isIt === true;
+        if (typeof token.name === "string") session.user.name = token.name;
       }
+      session.viewAs = (token?.viewAs as ViewAs | null | undefined) ?? null;
       return session;
     },
   },

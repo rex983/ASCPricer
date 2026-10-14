@@ -1,5 +1,6 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { LAUNCHER_AUDIENCE } from "@/lib/launcher-access";
 
 // Public JWKS endpoint published by the BBD Launcher (its IdP).
 // Set LAUNCHER_JWKS_URL on Vercel; defaults to the production deployment.
@@ -10,7 +11,14 @@ const JWKS_URL =
 const JWKS = createRemoteJWKSet(new URL(JWKS_URL));
 
 // Must match launcher_sso_configs.jwt_audience for this app.
-const AUDIENCE = "asc-pricer";
+const AUDIENCE = LAUNCHER_AUDIENCE;
+
+/** Admin "View as": the launcher admin who is previewing as the subject. */
+export interface LauncherSsoActor {
+  sub: string; // admin email
+  profile_id: string;
+  name: string;
+}
 
 export interface LauncherSsoClaims {
   sub: string;
@@ -18,6 +26,7 @@ export interface LauncherSsoClaims {
   name: string;
   role: string;
   profile_id: string;
+  act: LauncherSsoActor | null;
 }
 
 /**
@@ -64,6 +73,28 @@ export async function verifyLauncherSsoToken(
     throw new Error("SSO token missing email claim");
   }
 
+  // Optional actor claim (launcher admin "View as"). If present it must be
+  // well-formed — a malformed act is rejected rather than ignored, so a
+  // view-as token can never silently become a normal session.
+  let act: LauncherSsoActor | null = null;
+  if (payload.act !== undefined && payload.act !== null) {
+    const a = payload.act as Record<string, unknown>;
+    if (
+      typeof a !== "object" ||
+      typeof a.sub !== "string" ||
+      a.sub.length === 0 ||
+      typeof a.profile_id !== "string" ||
+      a.profile_id.length === 0
+    ) {
+      throw new Error("SSO token has a malformed act claim");
+    }
+    act = {
+      sub: a.sub,
+      profile_id: a.profile_id,
+      name: typeof a.name === "string" ? a.name : "",
+    };
+  }
+
   // maxTokenAge guarantees iat is present; exp is set by the launcher (60s).
   const expSec =
     typeof payload.exp === "number" ? payload.exp : (payload.iat as number) + 120;
@@ -78,5 +109,6 @@ export async function verifyLauncherSsoToken(
       typeof payload.profile_id === "string"
         ? payload.profile_id
         : String(payload.sub ?? ""),
+    act,
   };
 }
